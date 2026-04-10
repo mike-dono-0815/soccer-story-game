@@ -205,7 +205,7 @@ window.Game.StoryData = (function () {
       background: 'bg-tour-asia',
       character: 'journalist', name: 'Alexandra Chen',
       prompt: '"Gaffer — forty thousand fans tonight, your face on every billboard in Bangkok. What\'s the message you\'re sending with this trip?"',
-      options: [
+      choices: [
         {
           label: '"This club deserves a global stage. We belong here."',
           hint: 'Bold and ambitious. The headline writes itself.',

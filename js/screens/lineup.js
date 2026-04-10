@@ -58,6 +58,29 @@ window.Game.Screens.Lineup = (function () {
     ST: 'FWD', CF: 'FWD', RW: 'FWD', LW: 'FWD',
   };
 
+  const POS_ORDER = { FWD: 0, MID: 1, DEF: 2, GK: 3 };
+
+  function playerGroup(pos) {
+    return POS_GROUP[pos] || 'MID';
+  }
+
+  function sortedSquad(squad, slottedLineup, prodigyOnSquad) {
+    return squad
+      .filter(p => p.id !== 'prodigy' || prodigyOnSquad)
+      .slice()
+      .sort((a, b) => {
+        // Primary: position group (FWD → MID → DEF → GK)
+        const aGrp = POS_ORDER[playerGroup(a.position)] ?? 1;
+        const bGrp = POS_ORDER[playerGroup(b.position)] ?? 1;
+        if (aGrp !== bGrp) return aGrp - bGrp;
+        // Secondary: starters before subs within the same group
+        const aStarter = slottedLineup.includes(a.id) ? 0 : 1;
+        const bStarter = slottedLineup.includes(b.id) ? 0 : 1;
+        if (aStarter !== bStarter) return aStarter - bStarter;
+        return b.rating - a.rating;
+      });
+  }
+
   // How much rating is kept at each fit level
   const FIT_FACTOR = { green: 1.00, yellow: 0.85, orange: 0.70, red: 0.50 };
 
@@ -169,17 +192,54 @@ window.Game.Screens.Lineup = (function () {
       if (countEl) countEl.textContent = countLabel(slottedLineup);
     }
 
+    function buildSquadCard(player) {
+      const inSlot = slottedLineup.includes(player.id);
+      const group  = playerGroup(player.position).toLowerCase();
+      const card = document.createElement('div');
+      card.className = `player-card-small group-${group} ${inSlot ? 'starter' : ''}`;
+      card.dataset.playerId = player.id;
+      card.style.touchAction = 'none';
+
+      const numEl = document.createElement('div');
+      numEl.className = `player-num ${inSlot ? 'starter' : ''}`;
+      numEl.textContent = inSlot ? '✓' : player.position;
+
+      const infoEl = document.createElement('div');
+      infoEl.className = 'player-info';
+      const nameEl = document.createElement('div');
+      nameEl.className = 'player-name';
+      nameEl.textContent = player.name;
+      const posEl = document.createElement('div');
+      posEl.className = 'player-pos';
+      posEl.textContent = `${player.position} · Age ${player.age}`;
+      infoEl.appendChild(nameEl);
+      infoEl.appendChild(posEl);
+
+      const ratingEl = document.createElement('div');
+      ratingEl.className = 'player-rating';
+      ratingEl.textContent = player.rating;
+
+      card.appendChild(numEl);
+      card.appendChild(infoEl);
+      card.appendChild(ratingEl);
+
+      card.addEventListener('pointerdown', e => startDrag(e, player.id, null));
+      return card;
+    }
+
     function refreshSquadCards() {
-      squadList.querySelectorAll('.player-card-small').forEach(card => {
-        const pid = card.dataset.playerId;
-        const inSlot = slottedLineup.includes(pid);
-        card.classList.toggle('starter', inSlot);
-        const numEl = card.querySelector('.player-num');
-        if (numEl) {
-          numEl.classList.toggle('starter', inSlot);
-          const player = state.squad.find(p => p.id === pid);
-          numEl.textContent = inSlot ? '✓' : (player ? player.position : '?');
+      squadList.innerHTML = '';
+      const sorted = sortedSquad(state.squad, slottedLineup, state.story.prodigyOnSquad);
+      let lastGroup = null;
+      sorted.forEach(player => {
+        const group = playerGroup(player.position);
+        if (lastGroup !== null && lastGroup !== group) {
+          const divider = document.createElement('div');
+          divider.className = 'squad-group-divider';
+          squadList.appendChild(divider);
         }
+        squadList.appendChild(buildSquadCard(player));
+        lastGroup = group;
       });
     }
 
@@ -310,43 +370,7 @@ window.Game.Screens.Lineup = (function () {
       if (pid) startDrag(e, pid, slotIdx);
     });
 
-    state.squad.forEach(player => {
-      if (player.id === 'prodigy' && !state.story.prodigyOnSquad) return;
-      const card = document.createElement('div');
-      const inSlot = slottedLineup.includes(player.id);
-      card.className = `player-card-small ${inSlot ? 'starter' : ''}`;
-      card.dataset.playerId = player.id;
-      card.style.touchAction = 'none';
-
-      const numEl = document.createElement('div');
-      numEl.className = `player-num ${inSlot ? 'starter' : ''}`;
-      numEl.textContent = inSlot ? '✓' : player.position;
-
-      const infoEl = document.createElement('div');
-      infoEl.className = 'player-info';
-      const nameEl = document.createElement('div');
-      nameEl.className = 'player-name';
-      nameEl.textContent = player.name;
-      const posEl = document.createElement('div');
-      posEl.className = 'player-pos';
-      posEl.textContent = `${player.position} · Age ${player.age}`;
-      infoEl.appendChild(nameEl);
-      infoEl.appendChild(posEl);
-
-      const ratingEl = document.createElement('div');
-      ratingEl.className = 'player-rating';
-      ratingEl.textContent = player.rating;
-
-      card.appendChild(numEl);
-      card.appendChild(infoEl);
-      card.appendChild(ratingEl);
-
-      card.addEventListener('pointerdown', e => {
-        startDrag(e, player.id, null);
-      });
-
-      squadList.appendChild(card);
-    });
+    refreshSquadCards();
 
     body.appendChild(pitchEl);
     body.appendChild(squadList);
@@ -358,7 +382,21 @@ window.Game.Screens.Lineup = (function () {
   // ── Pitch Rendering ───────────────────────────────────────────
 
   function refreshPitch(pitchEl, formation, slottedLineup) {
-    pitchEl.querySelectorAll('.lineup-position-slot').forEach(el => el.remove());
+    pitchEl.querySelectorAll('.lineup-position-slot, .pitch-zone').forEach(el => el.remove());
+
+    // Position zone overlays (behind slots)
+    [
+      { group: 'fwd', top: '0%',   height: '30%' },
+      { group: 'mid', top: '30%',  height: '27%' },
+      { group: 'def', top: '57%',  height: '23%' },
+      { group: 'gk',  top: '78%',  height: '22%' },
+    ].forEach(z => {
+      const el = document.createElement('div');
+      el.className = `pitch-zone pitch-zone-${z.group}`;
+      el.style.top    = z.top;
+      el.style.height = z.height;
+      pitchEl.appendChild(el);
+    });
 
     const positions = FORMATION_POSITIONS[formation] || FORMATION_POSITIONS['4-3-3'];
     const state = window.Game.State.get();

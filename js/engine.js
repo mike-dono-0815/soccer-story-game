@@ -39,7 +39,7 @@ window.Game.Engine = (function () {
     overlay.appendChild(video);
     overlay.appendChild(skip);
 
-    const root = document.getElementById('game-root');
+    const root = document.querySelector('.game-container') || document.getElementById('game-root');
     root.appendChild(overlay);
 
     let done = false;

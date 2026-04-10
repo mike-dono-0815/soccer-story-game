@@ -7,6 +7,90 @@ window.Game.Screens = window.Game.Screens || {};
 
 window.Game.Screens.Decision = (function () {
 
+  // Unique icon + label for each tracked stat bucket
+  const STAT_META = {
+    teamMorale:        { icon: '🔥', label: 'Morale' },
+    boardConfidence:   { icon: '🎩', label: 'Board' },
+    mediaRep:          { icon: '📺', label: 'Media' },
+    fanReputation:     { icon: '📣', label: 'Fans' },
+    starHappiness:     { icon: '⭐', label: 'Star' },
+    youthInvestment:   { icon: '🌱', label: 'Youth' },
+    budget:            { icon: '💰', label: 'Budget' },
+    teamStrengthBonus: { icon: '💪', label: 'Strength' },
+  };
+
+  // Collect all numeric displayable effects from a choice
+  function getNumericEffects(choice) {
+    const merged = Object.assign({}, choice.effects || {});
+    if (choice.rootEffects && typeof choice.rootEffects.budget === 'number') {
+      merged.budget = choice.rootEffects.budget;
+    }
+    return Object.keys(merged)
+      .filter(k => typeof merged[k] === 'number' && STAT_META[k])
+      .map(k => ({ key: k, val: merged[k], meta: STAT_META[k] }));
+  }
+
+  // Spread n items across [minPct, maxPct] evenly
+  function spreadPositions(n, minPct, maxPct) {
+    if (n === 1) return [50];
+    return Array.from({ length: n }, (_, i) =>
+      Math.round(minPct + ((maxPct - minPct) / (n - 1)) * i)
+    );
+  }
+
+  // Animated chips inside a given container element
+  function showEffectBurst(effects, container, onDone) {
+    if (!effects.length) { onDone(); return; }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'effect-burst-overlay';
+    container.appendChild(overlay);
+
+    const positive = effects.filter(e => e.val >= 0);
+    const negative = effects.filter(e => e.val < 0);
+    const posPos = spreadPositions(positive.length, 15, 85);
+    const negPos = spreadPositions(negative.length, 15, 85);
+
+    function makeChip(effect, leftPct, direction, delay) {
+      const chip = document.createElement('div');
+      chip.className = `effect-chip ${effect.val >= 0 ? 'positive' : 'negative'} fly-${direction}`;
+      chip.style.left = `${leftPct}%`;
+      chip.style.animationDelay = `${delay}ms`;
+      const iconEl = document.createElement('span');
+      iconEl.className = 'effect-chip-icon';
+      iconEl.textContent = effect.meta.icon;
+      const labelEl = document.createElement('span');
+      labelEl.className = 'effect-chip-label';
+      labelEl.textContent = effect.meta.label;
+      chip.appendChild(iconEl);
+      chip.appendChild(labelEl);
+      overlay.appendChild(chip);
+    }
+
+    positive.forEach((e, i) => makeChip(e, posPos[i], 'up',   i * 75));
+    negative.forEach((e, i) => makeChip(e, negPos[i], 'down', i * 75));
+
+    // After animation settles, show continue hint and wait for tap
+    const animMs = 2200 + (effects.length - 1) * 75;
+    setTimeout(() => {
+      const hint = document.createElement('div');
+      hint.className = 'effect-continue-hint';
+      hint.textContent = 'Tap to continue';
+      overlay.appendChild(hint);
+
+      overlay.style.pointerEvents = 'auto';
+      overlay.style.cursor = 'pointer';
+
+      function advance() {
+        overlay.removeEventListener('click', advance);
+        overlay.removeEventListener('touchend', advance);
+        onDone();
+      }
+      overlay.addEventListener('click', advance);
+      overlay.addEventListener('touchend', advance, { passive: true });
+    }, animMs);
+  }
+
   function render(scene) {
     const { Characters, Utils, Engine } = window.Game;
     const char = Characters.get(scene.character || 'narrator');
@@ -92,23 +176,60 @@ window.Game.Screens.Decision = (function () {
   function handleChoice(choice) {
     const { State, Engine } = window.Game;
 
+    // Lock input immediately
+    document.querySelectorAll('.choice-card').forEach(c => { c.style.pointerEvents = 'none'; });
+
+    const promptBox  = document.querySelector('.decision-prompt-box');
+    const choicesDiv = document.querySelector('.decision-choices');
+
+    // Snapshot height of choices before anything changes
+    const animHeight = choicesDiv ? choicesDiv.offsetHeight : 160;
+
+    // Fade out prompt + choices together
+    [promptBox, choicesDiv].forEach(el => {
+      if (!el) return;
+      el.style.transition = 'opacity 0.2s ease';
+      el.style.opacity = '0';
+    });
+
     if (choice.effects)     State.applyEffects(choice.effects);
     if (choice.rootEffects) State.applyRootEffects(choice.rootEffects);
     State.save();
 
-    // Check if sacked (only if not already in crisis and not already resigned)
-    const state = State.get();
-    if (state.story.boardConfidence <= 15 && !state.story.boardCrisisActive && !state.story.resignedChoice) {
-      state.story.boardCrisisActive = true;
-      State.save();
-      Engine.advance('sacked_mid_season');
-      return;
-    }
+    setTimeout(() => {
+      // Show selected label where prompt was
+      if (promptBox) {
+        promptBox.innerHTML = '';
+        const label = document.createElement('div');
+        label.className = 'decision-selected-label';
+        label.textContent = choice.label;
+        promptBox.appendChild(label);
+        promptBox.style.transition = 'opacity 0.25s ease';
+        promptBox.style.opacity = '1';
+      }
 
-    // Resolve next
-    const nextId = Engine.resolveNext(choice.next, choice.condition);
-    if (nextId) Engine.advance(nextId);
-    else Engine.next();
+      // Replace choices div with a fixed-height animation zone
+      const animZone = document.createElement('div');
+      animZone.className = 'decision-anim-zone';
+      animZone.style.height = `${animHeight}px`;
+      if (choicesDiv && choicesDiv.parentNode) {
+        choicesDiv.parentNode.replaceChild(animZone, choicesDiv);
+      }
+
+      const numEffects = getNumericEffects(choice);
+      showEffectBurst(numEffects, animZone, function proceed() {
+        const state = State.get();
+        if (state.story.boardConfidence <= 15 && !state.story.boardCrisisActive && !state.story.resignedChoice) {
+          state.story.boardCrisisActive = true;
+          State.save();
+          Engine.advance('sacked_mid_season');
+          return;
+        }
+        const nextId = Engine.resolveNext(choice.next, choice.condition);
+        if (nextId) Engine.advance(nextId);
+        else Engine.next();
+      });
+    }, 220);
   }
 
   return { render };
