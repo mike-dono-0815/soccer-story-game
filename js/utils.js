@@ -153,6 +153,23 @@ window.Game.Utils = (function () {
     return node;
   }
 
-  return { clamp, randomBetween, randomFrom, render, typewriter, formatMoney, formatDelta, ordinal, deepClone, el, showDebug };
+  // ── Trophy sprite helper ──────────────────────────────────────
+  // Trophies.png: 1024×559px, 4 equal columns L→R: league, fa, champions, world
+  const _TROPHY_KEY = {
+    'VPL': 'league', 'Valorian Premier League': 'league', 'league': 'league',
+    'FA Cup': 'fa',  'fa': 'fa',
+    'Champions Cup': 'champions', 'champ': 'champions', 'Champions': 'champions',
+    'World Championship': 'world', 'World Cup': 'world', 'world': 'world',
+  };
+  function mkTrophy(competition, size) {
+    const type = _TROPHY_KEY[competition] || 'league';
+    const img = document.createElement('img');
+    img.src = `trophy_${type}.png`;
+    img.alt = type;
+    img.className = `trophy-icon trophy-${size || 'sm'}`;
+    return img;
+  }
+
+  return { clamp, randomBetween, randomFrom, render, typewriter, formatMoney, formatDelta, ordinal, deepClone, el, mkTrophy, showDebug };
 
 })();

@@ -152,7 +152,11 @@ window.Game.Screens.Hub = (function () {
       row.className = 'hub-stat-row';
       const lEl = document.createElement('div');
       lEl.className = 'hub-stat-label';
-      lEl.textContent = label;
+      lEl.style.cssText = 'display:flex;align-items:center;gap:6px';
+      lEl.appendChild(Utils.mkTrophy(tab, 'xs'));
+      const labelText = document.createElement('span');
+      labelText.textContent = label;
+      lEl.appendChild(labelText);
       const vEl = document.createElement('div');
       vEl.className = 'hub-stat-value';
       vEl.textContent = status + ' ›';
@@ -286,7 +290,12 @@ window.Game.Screens.Hub = (function () {
       r.competitionWins.forEach(win => {
         const row = document.createElement('div');
         row.className = 'hub-stat-row';
-        row.innerHTML = `<span style="color:var(--accent-gold)">🏆 ${win}</span>`;
+        row.style.cssText = 'display:flex;align-items:center;gap:10px';
+        row.appendChild(Utils.mkTrophy(win, 'md'));
+        const label = document.createElement('span');
+        label.style.color = 'var(--accent-gold)';
+        label.textContent = win;
+        row.appendChild(label);
         compCard.appendChild(row);
       });
       body.appendChild(compCard);
@@ -305,6 +314,15 @@ window.Game.Screens.Hub = (function () {
     continueBtn.addEventListener('touchend', e => { e.preventDefault(); Engine.runCurrentEvent(); }, { passive: false });
     footer.appendChild(continueBtn);
 
+    const squadBtn = document.createElement('button');
+    squadBtn.className = 'hub-btn-icon';
+    squadBtn.title = 'Squad';
+    squadBtn.textContent = '👥';
+    const onSquad = () => window.Game.Screens.Squad.render(() => Engine.showHub());
+    squadBtn.addEventListener('click', onSquad);
+    squadBtn.addEventListener('touchend', e => { e.preventDefault(); onSquad(); }, { passive: false });
+    footer.appendChild(squadBtn);
+
     const calendarBtn = document.createElement('button');
     calendarBtn.className = 'hub-btn-icon';
     calendarBtn.title = 'Season Calendar';
@@ -313,19 +331,6 @@ window.Game.Screens.Hub = (function () {
     calendarBtn.addEventListener('touchend', e => { e.preventDefault(); window.Game.Screens.Calendar.render(); }, { passive: false });
     footer.appendChild(calendarBtn);
 
-    const settings = window.Game.Settings;
-    const portraitBtn = document.createElement('button');
-    portraitBtn.className = 'hub-btn-icon';
-    portraitBtn.title = 'Toggle portrait style';
-    portraitBtn.textContent = settings.portraitMode === 'image' ? '🖼️' : '🎨';
-    portraitBtn.style.fontSize = '18px';
-    const onPortraitToggle = () => {
-      settings.toggle();
-      portraitBtn.textContent = settings.portraitMode === 'image' ? '🖼️' : '🎨';
-    };
-    portraitBtn.addEventListener('click', onPortraitToggle);
-    portraitBtn.addEventListener('touchend', e => { e.preventDefault(); onPortraitToggle(); }, { passive: false });
-    footer.appendChild(portraitBtn);
 
     div.appendChild(footer);
 

@@ -38,11 +38,15 @@ window.Game.Screens.Match = (function () {
     const content = document.createElement('div');
     content.className = 'match-content';
 
-    // Competition badge
+    // Competition badge + trophy
+    const compHeader = document.createElement('div');
+    compHeader.className = 'match-comp-header';
     const compBadge = document.createElement('div');
     compBadge.className = 'match-competition-badge';
     compBadge.textContent = scene.competition || 'Valorian Premier League';
-    content.appendChild(compBadge);
+    compHeader.appendChild(compBadge);
+    compHeader.appendChild(Utils.mkTrophy(scene.competition || 'VPL', 'sm'));
+    content.appendChild(compHeader);
 
     // Scoreboard
     content.appendChild(buildScoreboard(result, summary, homeTeam, awayTeam, isHome));

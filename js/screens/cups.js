@@ -57,6 +57,11 @@ window.Game.Screens.Cups = (function () {
         body.appendChild(msg);
         return;
       }
+      const trophyHeader = document.createElement('div');
+      trophyHeader.className = 'cups-trophy-header';
+      trophyHeader.appendChild(window.Game.Utils.mkTrophy(tab, 'sm'));
+      body.appendChild(trophyHeader);
+
       if (tab === 'fa')    renderFA(body, cups.fa);
       if (tab === 'champ') renderChamp(body, cups.champ);
       if (tab === 'world') renderWorld(body, cups.world);

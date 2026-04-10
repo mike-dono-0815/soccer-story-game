@@ -567,6 +567,13 @@
   text-align: center;
   margin-bottom: 20px;
 }
+.match-comp-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
 .match-competition-badge {
   display: inline-block;
   padding: 4px 12px;
@@ -1836,6 +1843,11 @@
   font-weight: 500;
   color: var(--text-dim);
 }
+.cups-trophy-header {
+  display: flex;
+  justify-content: center;
+  padding: 4px 0 8px;
+}
 .cups-qual-info {
   font-size: 10px;
   color: var(--text-dim);
@@ -1902,16 +1914,28 @@
 }
 .ending-stats-val { color: var(--text-primary); font-weight: 600; }
 
+/* --- TROPHY IMAGES ---------------------------------------- */
+
+.trophy-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.trophy-xs { height: 30px; width: auto; }
+.trophy-sm { height: 52px; width: auto; }
+.trophy-md { height: 87px; width: auto; }
+
 /* --- INTRO VIDEO ------------------------------------------ */
 
 .intro-overlay {
-  position: fixed;
+  position: absolute;
   inset: 0;
   background: #000;
   z-index: 9999;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   transition: opacity 0.4s ease;
 }
 .intro-overlay.intro-fade-out {
@@ -1921,7 +1945,7 @@
 .intro-video {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 .intro-skip {
   position: absolute;
