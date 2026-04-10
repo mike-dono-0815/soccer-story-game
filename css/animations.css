@@ -1,0 +1,167 @@
+/* ============================================================
+   ANIMATIONS & TRANSITIONS
+   ============================================================ */
+
+/* Screen transitions */
+.screen-enter {
+  animation: screenFadeIn 0.35s ease forwards;
+}
+.screen-exit {
+  animation: screenFadeOut 0.25s ease forwards;
+}
+
+@keyframes screenFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes screenFadeOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-8px); }
+}
+
+/* Dialogue box slide up */
+.dialogue-enter {
+  animation: dialogueSlideUp 0.3s ease forwards;
+}
+@keyframes dialogueSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Choice cards stagger in */
+.choice-enter {
+  animation: choiceSlideUp 0.25s ease forwards;
+  opacity: 0;
+}
+.choice-enter:nth-child(1) { animation-delay: 0.05s; }
+.choice-enter:nth-child(2) { animation-delay: 0.12s; }
+.choice-enter:nth-child(3) { animation-delay: 0.19s; }
+.choice-enter:nth-child(4) { animation-delay: 0.26s; }
+@keyframes choiceSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Portrait fade in */
+.portrait-enter {
+  animation: portraitFadeIn 0.5s ease forwards;
+}
+@keyframes portraitFadeIn {
+  from { opacity: 0; transform: translateY(30px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Score reveal */
+.score-reveal {
+  animation: scoreReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+@keyframes scoreReveal {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Match moment slide in */
+.moment-enter {
+  animation: momentSlideIn 0.3s ease forwards;
+  opacity: 0;
+}
+.moment-enter:nth-child(1) { animation-delay: 0.8s; }
+.moment-enter:nth-child(2) { animation-delay: 1.2s; }
+.moment-enter:nth-child(3) { animation-delay: 1.6s; }
+
+@keyframes momentSlideIn {
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Pulse hint (tap to continue) */
+@keyframes pulse-hint {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.9; }
+}
+
+/* Float (endings) */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+/* Meter fill animation */
+.meter-fill {
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Card press */
+.card-press:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Typewriter cursor */
+.typewriter-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--text-primary);
+  vertical-align: text-bottom;
+  animation: blink 0.8s step-end infinite;
+  margin-left: 2px;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Shake (bad news) */
+.shake {
+  animation: shake 0.4s ease;
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+/* Pulse (good news) */
+.pulse-good {
+  animation: pulseGood 0.5s ease;
+}
+@keyframes pulseGood {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+/* Stars sparkle on ending */
+.sparkle {
+  animation: sparkle 1.5s ease-in-out infinite;
+}
+@keyframes sparkle {
+  0%, 100% { opacity: 0.3; transform: scale(1) rotate(0deg); }
+  50%       { opacity: 1;   transform: scale(1.2) rotate(180deg); }
+}
+
+/* Slide in from right (screen navigation) */
+.slide-in-right {
+  animation: slideInRight 0.3s ease forwards;
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Slide in from left */
+.slide-in-left {
+  animation: slideInLeft 0.3s ease forwards;
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-30px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* Hub refresh */
+.hub-refresh {
+  animation: screenFadeIn 0.2s ease;
+}

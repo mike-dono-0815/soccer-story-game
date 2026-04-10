@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>The Gaffer</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/screens.css">
+  <link rel="stylesheet" href="css/animations.css">
+</head>
+<body>
+  <div id="game-root"></div>
+  <div id="debug-overlay" class="hidden">
+    <div class="debug-content">
+      <h3>Debug State</h3>
+      <pre id="debug-text"></pre>
+      <button onclick="document.getElementById('debug-overlay').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+
+  <!-- Load order matters: utils → state → characters → story-data → screens → engine -->
+  <script src="js/utils.js"></script>
+  <script src="js/league-sim.js"></script>
+  <script src="js/cup-sim.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/characters.js"></script>
+  <script src="js/story-data.js"></script>
+  <script src="js/screens/hub.js"></script>
+  <script src="js/screens/squad.js"></script>
+  <script src="js/screens/league.js"></script>
+  <script src="js/screens/cups.js"></script>
+  <script src="js/screens/scene.js"></script>
+  <script src="js/screens/decision.js"></script>
+  <script src="js/match-summary.js"></script>
+  <script src="js/screens/match.js"></script>
+  <script src="js/screens/lineup.js"></script>
+  <script src="js/screens/training.js"></script>
+  <script src="js/screens/transfer.js"></script>
+  <script src="js/screens/calendar.js"></script>
+  <script src="js/engine.js"></script>
+</body>
+</html>
