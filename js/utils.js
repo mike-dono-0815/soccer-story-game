@@ -159,7 +159,7 @@ window.Game.Utils = (function () {
     'VPL': 'league', 'Valorian Premier League': 'league', 'league': 'league',
     'FA Cup': 'fa',  'fa': 'fa',
     'Champions Cup': 'champions', 'champ': 'champions', 'Champions': 'champions',
-    'World Championship': 'world', 'World Cup': 'world', 'world': 'world',
+    'World Championship': 'world', 'World Cup': 'world', 'Club World Cup': 'world', 'world': 'world',
   };
   function mkTrophy(competition, size) {
     const type = _TROPHY_KEY[competition] || 'league';

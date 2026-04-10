@@ -123,6 +123,50 @@
 }
 .name-setup input:focus { border-color: var(--accent-gold); }
 
+/* --- STORY INTRO ----------------------------------------- */
+
+.screen-story-intro {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  overflow-y: auto;
+  background: #07080f;
+}
+.story-intro-img {
+  width: 100%;
+  max-height: 38vh;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+  flex-shrink: 0;
+}
+.story-intro-card {
+  flex: 1;
+  padding: 24px 22px calc(28px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: linear-gradient(180deg, #0d0f1a 0%, #080a14 100%);
+}
+.story-intro-p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  margin: 0;
+}
+.story-intro-p-last {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-style: italic;
+}
+.story-intro-btn {
+  margin-top: 8px;
+  align-self: stretch;
+}
+
 /* --- HUB DASHBOARD --------------------------------------- */
 
 .screen-hub {
@@ -145,6 +189,7 @@
   background: var(--accent-gold);
   border-radius: 50% 50% 35% 35% / 50% 50% 40% 40%;
   display: flex; align-items: center; justify-content: center;
+  padding-bottom: 3px;
   flex-shrink: 0;
 }
 .hub-crest-letter {
@@ -1843,6 +1888,62 @@
   font-weight: 500;
   color: var(--text-dim);
 }
+/* CWC match rows with flags */
+.cwc-match {
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+}
+.cwc-team {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.cwc-team:last-child {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+.cwc-team-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.cwc-team-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cwc-team.cups-team-us .cwc-team-name  { color: var(--text-primary); }
+.cwc-team.cups-team-won .cwc-team-name { color: var(--text-primary); font-weight: 700; }
+.cwc-team-nation {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.cwc-flag {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.cwc-score {
+  flex-shrink: 0;
+  min-width: 44px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+.cwc-score-vs {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
 .cups-trophy-header {
   display: flex;
   justify-content: center;

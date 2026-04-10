@@ -38,11 +38,23 @@ window.Game.CupSim = (function () {
     { id: 'porto_negro',     name: 'Porto Negro',      str: 80, group: 'B' },
   ];
 
-  const WORLD_TEAMS = [
-    { id: 'valhalla',         name: 'FC Valhalla',      str: 76 },
-    { id: 'santos_esmeralda', name: 'Santos Esmeralda', str: 82 },
-    { id: 'shoguns_fc',       name: 'Shoguns FC',       str: 87 },
-    { id: 'al_hilal_prime',   name: 'Al-Hilal Prime',   str: 80 },
+  const CWC_TEAMS = [
+    { id: 'valhalla',          name: 'FC Valhalla',          str: 76, nation: 'Valoria',       flag: '🏴' },
+    { id: 'santos_esmeralda',  name: 'Santos Esmeralda',     str: 82, nation: 'Brazil',         flag: '🇧🇷' },
+    { id: 'shoguns_fc',        name: 'Shoguns FC',           str: 87, nation: 'Japan',           flag: '🇯🇵' },
+    { id: 'atletico_porteno',  name: 'Atlético Porteño',     str: 80, nation: 'Argentina',      flag: '🇦🇷' },
+    { id: 'dynamo_vostok',     name: 'Dynamo Vostok',        str: 85, nation: 'Russia',          flag: '🇷🇺' },
+    { id: 'al_hilal_prime',    name: 'Al-Hilal Prime',       str: 80, nation: 'Saudi Arabia',   flag: '🇸🇦' },
+    { id: 'red_stars_seoul',   name: 'Red Stars Seoul',      str: 78, nation: 'South Korea',    flag: '🇰🇷' },
+    { id: 'leopards_fc',       name: 'Leopards FC',          str: 74, nation: 'Ivory Coast',    flag: '🇨🇮' },
+    { id: 'wolves_prague',     name: 'Wolves Prague',        str: 75, nation: 'Czech Republic', flag: '🇨🇿' },
+    { id: 'eagles_cairo',      name: 'Eagles Cairo',         str: 73, nation: 'Egypt',           flag: '🇪🇬' },
+    { id: 'cf_azteca',         name: 'CF Azteca',            str: 79, nation: 'Mexico',          flag: '🇲🇽' },
+    { id: 'pacific_united',    name: 'Pacific United',       str: 72, nation: 'Australia',      flag: '🇦🇺' },
+    { id: 'cape_town_city',    name: 'Cape Town City',       str: 71, nation: 'South Africa',   flag: '🇿🇦' },
+    { id: 'kartal_istanbul',   name: 'Kartal Istanbul',      str: 77, nation: 'Turkey',          flag: '🇹🇷' },
+    { id: 'nordics_united',    name: 'Nordics United',       str: 73, nation: 'Norway',          flag: '🇳🇴' },
+    { id: 'tigers_mumbai',     name: 'Tigers Mumbai',        str: 70, nation: 'India',           flag: '🇮🇳' },
   ];
 
   // ── Helpers ──────────────────────────────────────────────────
@@ -143,7 +155,8 @@ window.Game.CupSim = (function () {
             const tb = ct(b) || { id: b, str: 76 };
             const { hg, ag } = simGroupGoals(ta, tb);
             const w = hg > ag ? a : hg < ag ? b : null;
-            fixtures.push({ homeId: a, awayId: b, homeGoals: hg, awayGoals: ag, winnerId: w, isStory: false, played: true });
+            // played: false — revealed only after the group stage story matches complete
+            fixtures.push({ homeId: a, awayId: b, homeGoals: hg, awayGoals: ag, winnerId: w, isStory: false, played: false });
           }
         }
       }
@@ -177,20 +190,52 @@ window.Game.CupSim = (function () {
     return { groupA, groupB, KO, Final, teams: CHAMP_TEAMS };
   }
 
-  // ── World Championship ────────────────────────────────────────
-  // 4 teams, SF format. Valhalla: SF vs Santos, Final vs Shoguns
+  // ── Club World Cup ─────────────────────────────────────────────
+  // 16 teams (national champions), straight KO. Valhalla qualifies only by winning the league.
+  // Story path: R16 vs Santos Esmeralda → QF vs Atlético Porteño → SF vs Shoguns FC → Final vs Dynamo Vostok
 
-  function simulateWorld() {
+  function simulateCWC() {
+    function cwt(id) { return CWC_TEAMS.find(t => t.id === id) || { id, str: 75 }; }
+
+    function simKOcwc(hId, aId, forceWinner) {
+      const r = ko(hId, aId, cwt, forceWinner);
+      // played: false — revealed round-by-round
+      r.played = false;
+      return r;
+    }
+
+    // R16 — 8 matches. Valhalla match is a story scene; others are pre-simulated (held back).
+    const R16 = [
+      story('valhalla',         'santos_esmeralda', 'cwc_r16'),                            // [0] STORY
+      simKOcwc('atletico_porteno',  'leopards_fc',       'atletico_porteno'),               // [1] forced — QF opponent
+      simKOcwc('red_stars_seoul',   'pacific_united'),                                      // [2]
+      simKOcwc('wolves_prague',     'tigers_mumbai'),                                       // [3]
+      simKOcwc('shoguns_fc',        'cf_azteca',         'shoguns_fc'),                     // [4] forced — SF opponent
+      simKOcwc('al_hilal_prime',    'cape_town_city'),                                      // [5]
+      simKOcwc('dynamo_vostok',     'nordics_united',    'dynamo_vostok'),                  // [6] forced — Final opponent
+      simKOcwc('kartal_istanbul',   'eagles_cairo'),                                        // [7]
+    ];
+
+    // QF — winners of R16 pairs. Valhalla match is a story scene.
+    const QF = [
+      story('valhalla',         'atletico_porteno', 'cwc_qf'),                             // [0] STORY
+      simKOcwc(R16[2].winnerId || 'red_stars_seoul', R16[3].winnerId || 'wolves_prague'),  // [1]
+      simKOcwc('shoguns_fc',        R16[5].winnerId || 'al_hilal_prime', 'shoguns_fc'),    // [2] forced
+      simKOcwc('dynamo_vostok',     R16[7].winnerId || 'kartal_istanbul', 'dynamo_vostok'),// [3] forced
+    ];
+
+    // SF — Valhalla match is a story scene.
     const SF = [
-      story('santos_esmeralda', 'valhalla',    'world_champ_group'), // Valhalla away per story
-      ko('shoguns_fc', 'al_hilal_prime', t => WORLD_TEAMS.find(x => x.id === t), 'shoguns_fc'), // forced
+      story('valhalla',         'shoguns_fc',   'cwc_sf'),                                 // [0] STORY
+      simKOcwc('dynamo_vostok', QF[1].winnerId || 'red_stars_seoul', 'dynamo_vostok'),     // [1] forced
     ];
 
+    // Final
     const Final = [
-      story('shoguns_fc', 'valhalla', 'world_champ_final'), // Valhalla away per story
+      story('valhalla', 'dynamo_vostok', 'cwc_final'),                                     // [0] STORY
     ];
 
-    return { SF, Final, teams: WORLD_TEAMS };
+    return { R16, QF, SF, Final, teams: CWC_TEAMS };
   }
 
   // ── Simulate All ─────────────────────────────────────────────
@@ -199,7 +244,7 @@ window.Game.CupSim = (function () {
     return {
       fa:    simulateFA(),
       champ: simulateChampions(),
-      world: simulateWorld(),
+      world: simulateCWC(),
     };
   }
 
@@ -208,12 +253,12 @@ window.Game.CupSim = (function () {
   function injectResult(cups, sceneId, outcome, homeGoals, awayGoals) {
     if (!cups) return;
 
-    const groupScenes = new Set(['champions_group_1', 'champions_group_2', 'world_champ_group']);
+    const groupScenes = new Set(['champions_group_1', 'champions_group_2']);
     const fa = cups.fa.rounds;
     const ch = cups.champ;
     const wo = cups.world;
 
-    const pools = [fa.R1, fa.QF, fa.SF, fa.Final, ch.groupA, ch.groupB, ch.KO, ch.Final, wo.SF, wo.Final];
+    const pools = [fa.R1, fa.QF, fa.SF, fa.Final, ch.groupA, ch.groupB, ch.KO, ch.Final, wo.R16, wo.QF, wo.SF, wo.Final];
     let match = null;
     for (const pool of pools) {
       if (!pool) continue;
@@ -260,8 +305,8 @@ window.Game.CupSim = (function () {
 
   // ── Phase Labels (for hub display) ───────────────────────────
 
-  function getPhaseLabel(cups) {
-    return { fa: _faPhase(cups.fa), champ: _champPhase(cups.champ), world: _worldPhase(cups.world) };
+  function getPhaseLabel(cups, results) {
+    return { fa: _faPhase(cups.fa), champ: _champPhase(cups.champ), world: _worldPhase(cups.world, results) };
   }
 
   function _faPhase(fa) {
@@ -292,19 +337,55 @@ window.Game.CupSim = (function () {
     return fVm.winnerId === 'valhalla' ? 'Champions!' : 'Runners-up';
   }
 
-  function _worldPhase(wo) {
-    const sfVm = wo.SF.find(m => m.homeId === 'valhalla' || m.awayId === 'valhalla');
+  function _worldPhase(wo, results) {
+    // Show qualification status until a CWC match has been played
+    const r16Vm = wo.R16 && wo.R16.find(m => m.homeId === 'valhalla' || m.awayId === 'valhalla');
+    if (!r16Vm || !r16Vm.played) {
+      if (results && results.vplPosition !== 1) return 'Not Qualified';
+      return 'Round of 16';
+    }
+    if (r16Vm.winnerId !== 'valhalla') return 'Out — Round of 16';
+    const qfVm = wo.QF && wo.QF.find(m => m.homeId === 'valhalla' || m.awayId === 'valhalla');
+    if (!qfVm || !qfVm.played) return 'Quarter-Final';
+    if (qfVm.winnerId !== 'valhalla') return 'Out — Quarter-Final';
+    const sfVm = wo.SF && wo.SF.find(m => m.homeId === 'valhalla' || m.awayId === 'valhalla');
     if (!sfVm || !sfVm.played) return 'Semi-Final';
     if (sfVm.winnerId !== 'valhalla') return 'Out — Semi-Final';
     const fVm = wo.Final[0];
     if (!fVm || !fVm.played) return 'Final';
-    return fVm.winnerId === 'valhalla' ? 'World Champions!' : 'Runners-up';
+    return fVm.winnerId === 'valhalla' ? 'Club World Champions!' : 'Runners-up';
+  }
+
+  // ── Finalize Champions Group ──────────────────────────────────
+  // Called after the last story group match (champions_group_2) completes.
+  // Reveals all pre-simulated group matches that were held back.
+
+  function finalizeChampGroups(cups) {
+    if (!cups) return;
+    [...cups.champ.groupA, ...cups.champ.groupB].forEach(m => {
+      if (!m.isStory && !m.played) m.played = true;
+    });
+  }
+
+  // Reveal pre-simulated CWC matches for a completed round.
+  // Call after each Valhalla story match completes.
+  function finalizeCWCRound(cups, round) {
+    if (!cups || !cups.world) return;
+    const wo = cups.world;
+    const pool = wo[round];
+    if (!pool) return;
+    pool.forEach(m => { if (!m.isStory && !m.played) m.played = true; });
   }
 
   function getTeamName(id) {
-    return (FA_TEAMS.find(t => t.id === id) || CHAMP_TEAMS.find(t => t.id === id) || WORLD_TEAMS.find(t => t.id === id) || { name: id }).name;
+    const all = [...FA_TEAMS, ...CHAMP_TEAMS, ...CWC_TEAMS];
+    return (all.find(t => t.id === id) || { name: id }).name;
   }
 
-  return { simulateAll, injectResult, groupStandings, getTeamName, getPhaseLabel, FA_TEAMS, CHAMP_TEAMS, WORLD_TEAMS };
+  function getCWCTeam(id) {
+    return CWC_TEAMS.find(t => t.id === id) || { id, name: id, nation: '', flag: '' };
+  }
+
+  return { simulateAll, injectResult, finalizeChampGroups, finalizeCWCRound, groupStandings, getTeamName, getCWCTeam, getPhaseLabel, FA_TEAMS, CHAMP_TEAMS, CWC_TEAMS };
 
 })();

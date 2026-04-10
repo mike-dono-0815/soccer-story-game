@@ -153,6 +153,7 @@ button {
 .meter-fill.morale  { background: linear-gradient(90deg, #3ddc84, #2bba6a); }
 .meter-fill.board   { background: linear-gradient(90deg, #4d9ef5, #2a80e0); }
 .meter-fill.media   { background: linear-gradient(90deg, #f5c842, #e0a820); }
+.meter-fill.fan     { background: linear-gradient(90deg, #f54280, #c41f5e); }
 .meter-fill.star    { background: linear-gradient(90deg, #9b6af5, #7a4ae0); }
 
 /* ============================================================

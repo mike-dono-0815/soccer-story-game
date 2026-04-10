@@ -98,21 +98,12 @@ window.Game.Screens.Hub = (function () {
     // Standing card
     const standingCard = document.createElement('div');
     standingCard.className = 'hub-card';
-    const standingTitleRow = document.createElement('div');
-    standingTitleRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:10px';
     const standingTitle = document.createElement('div');
     standingTitle.className = 'hub-card-title';
-    standingTitle.style.marginBottom = '0';
     standingTitle.textContent = 'Season Standing';
-    const tableBtn = document.createElement('button');
-    tableBtn.style.cssText = 'font-size:12px;font-weight:600;color:var(--accent-gold);opacity:0.85;';
-    tableBtn.textContent = 'Full Table ›';
+    standingCard.appendChild(standingTitle);
+
     const onTable = () => window.Game.Screens.League.render(() => Engine.showHub());
-    tableBtn.addEventListener('click', onTable);
-    tableBtn.addEventListener('touchend', e => { e.preventDefault(); onTable(); }, { passive: false });
-    standingTitleRow.appendChild(standingTitle);
-    standingTitleRow.appendChild(tableBtn);
-    standingCard.appendChild(standingTitleRow);
 
     const standingRows = [
       ['League Position', (r.vplWins + r.vplDraws + r.vplLosses === 0) ? '—' : Utils.ordinal(r.vplPosition) + ' of 18'],
@@ -129,18 +120,30 @@ window.Game.Screens.Hub = (function () {
       lEl.textContent = label;
       const vEl = document.createElement('div');
       vEl.className = 'hub-stat-value';
-      vEl.textContent = val;
+      if (label === 'League Position') {
+        const tableBtn = document.createElement('button');
+        tableBtn.style.cssText = 'font-size:11px;font-weight:600;color:var(--accent-gold);opacity:0.8;margin-right:8px;';
+        tableBtn.textContent = 'Full Table ›';
+        tableBtn.addEventListener('click', onTable);
+        tableBtn.addEventListener('touchend', e => { e.preventDefault(); onTable(); }, { passive: false });
+        vEl.style.display = 'flex';
+        vEl.style.alignItems = 'center';
+        vEl.appendChild(tableBtn);
+        vEl.appendChild(document.createTextNode(val));
+      } else {
+        vEl.textContent = val;
+      }
       row.appendChild(lEl);
       row.appendChild(vEl);
       standingCard.appendChild(row);
     });
 
     // Cup status rows — always visible from the start
-    const phaseLabels = state.cups ? window.Game.CupSim.getPhaseLabel(state.cups) : {};
+    const phaseLabels = state.cups ? window.Game.CupSim.getPhaseLabel(state.cups, state.results) : {};
     const cupEntries = [
       ['FA Cup',             'fa',    phaseLabels.fa    || 'Draw'],
       ['Champions Cup',      'champ', phaseLabels.champ || 'Draw'],
-      ['World Championship', 'world', phaseLabels.world || 'Draw'],
+      ['Club World Cup', 'world', phaseLabels.world || 'Not Qualified'],
     ];
 
     const cupDivider = document.createElement('div');
@@ -212,6 +215,7 @@ window.Game.Screens.Hub = (function () {
       { label: 'Team Morale', key: 'teamMorale', cls: 'morale' },
       { label: 'Board Confidence', key: 'boardConfidence', cls: 'board' },
       { label: 'Media Reputation', key: 'mediaRep', cls: 'media' },
+      { label: 'Fan Reputation', key: 'fanReputation', cls: 'fan' },
       { label: 'Star Happiness', key: 'starHappiness', cls: 'star' },
     ];
 

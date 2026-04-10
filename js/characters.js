@@ -57,15 +57,15 @@ window.Game.Characters = (function () {
     },
   };
 
-  // PNG assignments (random for now — can be remapped later)
+  // PNG assignments — Panini-style sticker portraits
   const pngMap = {
-    chairman:   'Soc_Put.png',
-    assistant:  'Soc_Kus.png',
-    star:       'Soc_Wam.png',
-    veteran:    'Soc_Owl.png',
-    prodigy:    'Soc_Bib.png',
-    rival:      'Soc_Gauks.png',
-    journalist: 'Soc_Empty.png',
+    chairman:   'stickers/sticker_chairman_0_0.png',
+    assistant:  'stickers/sticker_assistant_0_0.png',
+    star:       'stickers/sticker_star_0_0.png',
+    veteran:    'stickers/sticker_veteran_0_0.png',
+    prodigy:    'stickers/sticker_prodigy_0_1.png',
+    rival:      'stickers/sticker_rival_0_1.png',
+    journalist: 'stickers/sticker_journalist_0_1.png',
   };
 
   // Build portrait — uses PNG or SVG depending on Settings.portraitMode

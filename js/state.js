@@ -101,6 +101,7 @@ window.Game.State = (function () {
       teamStrengthBonus: 0,
       boardConfidence: 60,
       mediaRep: 50,
+      fanReputation: 50,
       starHappiness: 50,
       youthInvestment: 0,
       managerStyle: null,
@@ -216,6 +217,9 @@ window.Game.State = (function () {
       if (outcome === 'win')  { _state.results.vplWins++;   _state.results.vplPosition = Math.max(1, _state.results.vplPosition - 2); }
       if (outcome === 'draw') { _state.results.vplDraws++;  _state.results.vplPosition = Math.max(1, _state.results.vplPosition - 1); }
       if (outcome === 'loss') { _state.results.vplLosses++; _state.results.vplPosition = Math.min(18, _state.results.vplPosition + 1); }
+      // Fan reputation tracks league form
+      const fanDelta = outcome === 'win' ? 4 : outcome === 'draw' ? 1 : -3;
+      _state.story.fanReputation = window.Game.Utils.clamp(_state.story.fanReputation + fanDelta, 0, 100);
 
       // Update league fixture with actual result
       if (sceneId && _state.league && _state.league.fixtures) {
@@ -256,18 +260,30 @@ window.Game.State = (function () {
         _state.results.championsRound = 'out_' + (labels[sceneId] || 'Group');
       }
     }
-    if (competition === 'World Championship') {
-      _state.results.worldResult = outcome === 'win' ? 'winner' : 'eliminated';
+    if (competition === 'Club World Cup') {
+      _state.results.worldResult = outcome === 'win' ? 'progress' : 'eliminated';
       if (outcome === 'win') {
-        if (sceneId === 'world_champ_group') _state.results.worldRound = 'final';
-        else if (sceneId === 'world_champ_final') _state.results.worldRound = 'winner';
+        if      (sceneId === 'cwc_r16')   _state.results.worldRound = 'qf';
+        else if (sceneId === 'cwc_qf')    _state.results.worldRound = 'sf';
+        else if (sceneId === 'cwc_sf')    _state.results.worldRound = 'final';
+        else if (sceneId === 'cwc_final') { _state.results.worldRound = 'winner'; _state.results.worldResult = 'winner'; }
       } else {
-        _state.results.worldRound = sceneId === 'world_champ_group' ? 'out_Group' : 'out_Final';
+        const labels = { cwc_r16: 'R16', cwc_qf: 'QF', cwc_sf: 'SF', cwc_final: 'Final' };
+        _state.results.worldRound = 'out_' + (labels[sceneId] || 'R16');
       }
     }
     // Inject result into cup bracket
     if (_state.cups) {
       window.Game.CupSim.injectResult(_state.cups, sceneId, outcome, homeGoals, awayGoals);
+      // After each Champions group story match, reveal all pre-simulated group fixtures
+      if (sceneId === 'champions_group_2') {
+        window.Game.CupSim.finalizeChampGroups(_state.cups);
+      }
+      // After each CWC story match, reveal all other results for that round
+      const cwcRoundMap = { cwc_r16: 'R16', cwc_qf: 'QF', cwc_sf: 'SF' };
+      if (cwcRoundMap[sceneId]) {
+        window.Game.CupSim.finalizeCWCRound(_state.cups, cwcRoundMap[sceneId]);
+      }
     }
 
     // Morale effect

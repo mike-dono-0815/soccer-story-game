@@ -40,7 +40,7 @@ window.Game.Screens.Calendar = (function () {
       preseason:  { label: 'Pre-Season',           events: [] },
       league:     { label: 'League Season',         events: [] },
       cups:       { label: 'FA Cup & Champions Cup',events: [] },
-      worlds:     { label: 'World Championship',    events: [] },
+      worlds:     { label: 'Club World Cup',         events: [] },
     };
 
     events.forEach((ev, i) => {

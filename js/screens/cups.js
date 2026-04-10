@@ -7,14 +7,16 @@ window.Game.Screens = window.Game.Screens || {};
 
 window.Game.Screens.Cups = (function () {
 
-  const TAB_LABELS = { fa: 'FA Cup', champ: 'Champions', world: 'World Cup' };
-  const { groupStandings, getTeamName } = window.Game.CupSim;
+  const TAB_LABELS = { fa: 'FA Cup', champ: 'Champions', world: 'Club World Cup' };
+  const { groupStandings, getTeamName, getCWCTeam } = window.Game.CupSim;
 
   // ── Entry point ───────────────────────────────────────────────
 
   function render(startTab, backFn) {
     const { State, Utils } = window.Game;
-    const cups = State.get().cups;
+    const state = State.get();
+    const cups = state.cups;
+    const results = state.results;
 
     const div = document.createElement('div');
     div.className = 'screen-cups';
@@ -64,7 +66,7 @@ window.Game.Screens.Cups = (function () {
 
       if (tab === 'fa')    renderFA(body, cups.fa);
       if (tab === 'champ') renderChamp(body, cups.champ);
-      if (tab === 'world') renderWorld(body, cups.world);
+      if (tab === 'world') renderWorld(body, cups.world, results);
     }
 
     tabIds.forEach(tab => {
@@ -172,29 +174,103 @@ window.Game.Screens.Cups = (function () {
     }
   }
 
-  // ── World Championship ────────────────────────────────────────
+  // ── Club World Cup ─────────────────────────────────────────────
 
-  function renderWorld(body, wo) {
-    const sfVm = wo.SF.find(m => m.homeId === 'valhalla' || m.awayId === 'valhalla');
+  function renderWorld(body, wo, results) {
+    // Not qualified
+    const r16Vm = wo.R16 && wo.R16.find(m => m.homeId === 'valhalla' || m.awayId === 'valhalla');
+    if (!r16Vm || !r16Vm.played) {
+      if (!results || results.vplPosition !== 1) {
+        const msg = document.createElement('div');
+        msg.className = 'cups-empty';
+        msg.innerHTML = '<strong>Not Qualified</strong><br>Win the Valorian Premier League to enter the Club World Cup.';
+        body.appendChild(msg);
+        return;
+      }
+    }
+
+    // R16
+    const r16Mode = r16Vm && r16Vm.played ? 'results' : 'draw';
+    body.appendChild(cwcRoundSection('Round of 16', r16Mode, wo.R16 || []));
+    if (!r16Vm || !r16Vm.played) return;
+    if (r16Vm.winnerId !== 'valhalla') { body.appendChild(eliminatedBanner('Round of 16')); return; }
+
+    // QF
+    const qfVm = wo.QF && wo.QF.find(m => m.homeId === 'valhalla' || m.awayId === 'valhalla');
+    if (!qfVm) return;
+    body.appendChild(cwcRoundSection('Quarter-Final', qfVm.played ? 'results' : 'draw', wo.QF));
+    if (!qfVm.played) return;
+    if (qfVm.winnerId !== 'valhalla') { body.appendChild(eliminatedBanner('Quarter-Final')); return; }
+
+    // SF
+    const sfVm = wo.SF && wo.SF.find(m => m.homeId === 'valhalla' || m.awayId === 'valhalla');
     if (!sfVm) return;
+    body.appendChild(cwcRoundSection('Semi-Final', sfVm.played ? 'results' : 'draw', wo.SF));
+    if (!sfVm.played) return;
+    if (sfVm.winnerId !== 'valhalla') { body.appendChild(eliminatedBanner('Semi-Final')); return; }
 
-    if (!sfVm.played) {
-      body.appendChild(roundSection('Semi-Final', 'draw', wo.SF));
-      return;
-    }
-    body.appendChild(roundSection('Semi-Final', 'results', wo.SF));
-    if (sfVm.winnerId !== 'valhalla') {
-      body.appendChild(eliminatedBanner('Semi-Final'));
-      return;
-    }
-
+    // Final
     const fVm = wo.Final[0];
     if (!fVm) return;
-    const finalMode = fVm.played ? 'results' : 'draw';
-    body.appendChild(roundSection('Final', finalMode, wo.Final));
-    if (fVm.played && fVm.winnerId !== 'valhalla') {
-      body.appendChild(eliminatedBanner('Final'));
+    body.appendChild(cwcRoundSection('Final', fVm.played ? 'results' : 'draw', wo.Final));
+    if (fVm.played && fVm.winnerId !== 'valhalla') body.appendChild(eliminatedBanner('Final'));
+  }
+
+  // CWC match row — includes flag + nation under team name
+  function cwcMatchRow(m, mode) {
+    const isVal = m.homeId === 'valhalla' || m.awayId === 'valhalla';
+    const el = document.createElement('div');
+    el.className = 'cups-match cwc-match' + (isVal ? ' cups-valhalla' : '');
+
+    const homeT = getCWCTeam(m.homeId);
+    const awayT = getCWCTeam(m.awayId);
+
+    function teamCell(t, side) {
+      const cell = document.createElement('div');
+      cell.className = 'cwc-team ' + (t.id === 'valhalla' ? 'cups-team-us' : '');
+      if (mode === 'results') {
+        const won = m.winnerId === t.id;
+        if (won) cell.classList.add('cups-team-won');
+      }
+      const flag = document.createElement('span');
+      flag.className = 'cwc-flag';
+      flag.textContent = t.flag || '';
+      const info = document.createElement('div');
+      info.className = 'cwc-team-info';
+      const name = document.createElement('span');
+      name.className = 'cwc-team-name';
+      name.textContent = t.name;
+      const nation = document.createElement('span');
+      nation.className = 'cwc-team-nation';
+      nation.textContent = t.nation || '';
+      info.appendChild(name);
+      info.appendChild(nation);
+      if (side === 'home') { cell.appendChild(flag); cell.appendChild(info); }
+      else                 { cell.appendChild(info); cell.appendChild(flag); }
+      return cell;
     }
+
+    const scoreEl = document.createElement('div');
+    scoreEl.className = 'cwc-score';
+    if (mode === 'draw' || !m.played) {
+      scoreEl.textContent = 'vs';
+      scoreEl.classList.add('cwc-score-vs');
+    } else {
+      scoreEl.textContent = `${m.homeGoals ?? '–'} – ${m.awayGoals ?? '–'}`;
+    }
+
+    el.appendChild(teamCell(homeT, 'home'));
+    el.appendChild(scoreEl);
+    el.appendChild(teamCell(awayT, 'away'));
+    return el;
+  }
+
+  function cwcRoundSection(label, mode, matches) {
+    const sec = document.createElement('div');
+    sec.className = 'cups-section';
+    sec.appendChild(sectionTitle(label, mode));
+    matches.forEach(m => sec.appendChild(cwcMatchRow(m, mode)));
+    return sec;
   }
 
   // ── Section builders ──────────────────────────────────────────

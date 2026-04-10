@@ -188,7 +188,63 @@ window.Game.Engine = (function () {
   function startGame() {
     State.get().progress.currentEventIndex = 0;
     State.save();
-    showHub(); // Hub's Continue will run the first event
+    renderStoryIntro();
+  }
+
+  function renderStoryIntro() {
+    const { Utils } = window.Game;
+
+    const div = document.createElement('div');
+    div.className = 'game-container';
+
+    const screen = document.createElement('div');
+    screen.className = 'screen-story-intro screen-enter';
+
+    const img = document.createElement('img');
+    img.src = 'Intro.png';
+    img.className = 'story-intro-img';
+    img.alt = 'The pub';
+    screen.appendChild(img);
+
+    const card = document.createElement('div');
+    card.className = 'story-intro-card';
+
+    const paragraphs = [
+      "It's a rainy Tuesday night. You and your mates are crammed into your usual corner of The Fox & Whistle, pints in hand, watching FC Valhalla stumble through another dismal first half.",
+      "\"He's clueless,\" you groan, jabbing a finger at the screen. \"I could do better with my eyes shut. The formation's wrong, the substitutions are wrong, the whole thing is a mess.\"",
+      "Your friends laugh. But the TV flickers. The picture warps. The noise of the pub melts away — and suddenly you're not in the pub anymore.",
+      "You're sitting in the FC Valhalla dugout. The roar of a packed stadium washes over you. A coach hands you a tactics board and looks at you expectantly.",
+      "Somehow, impossibly, you're the manager of FC Valhalla now.",
+      "Time to show them you can do it better.",
+    ];
+
+    paragraphs.forEach((text, i) => {
+      const p = document.createElement('p');
+      p.className = 'story-intro-p' + (i === paragraphs.length - 1 ? ' story-intro-p-last' : '');
+      p.textContent = text;
+      card.appendChild(p);
+    });
+
+    const btn = document.createElement('button');
+    btn.className = 'btn-primary story-intro-btn';
+    btn.textContent = 'Take the Dugout';
+    btn.addEventListener('click', () => {
+      screen.classList.add('screen-exit');
+      setTimeout(() => { div.remove(); showHub(); }, 350);
+    });
+    btn.addEventListener('touchend', e => {
+      e.preventDefault();
+      screen.classList.add('screen-exit');
+      setTimeout(() => { div.remove(); showHub(); }, 350);
+    }, { passive: false });
+    card.appendChild(btn);
+
+    screen.appendChild(card);
+    div.appendChild(screen);
+
+    const root = document.getElementById('game-root');
+    root.innerHTML = '';
+    root.appendChild(div);
   }
 
   function resumeGame() {
@@ -315,6 +371,10 @@ window.Game.Engine = (function () {
 
       case 'minigame':
         routeMiniGame(scene);
+        break;
+
+      case 'gate':
+        advance(scene.check(State.get()) ? scene.ifTrue : scene.ifFalse);
         break;
 
       case 'eval':
