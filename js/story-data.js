@@ -108,7 +108,7 @@ window.Game.StoryData = (function () {
         location: 'First Team Training Session',
         text: "The full squad assembles for the first time under your management. Forty-two faces look back at you — some curious, some sceptical, a few openly sizing you up. The noise of studs on concrete fades to silence. They're waiting.",
       },
-      prompt: 'Lena hands you a whiteboard. "First session with the full squad tomorrow. What\'s our identity going to be, Gaffer?"',
+      prompt: 'Lena hands you a whiteboard. What\'s our identity going to be, Gaffer? Everyone is curious."',
       calendarLabel: 'Define Your Philosophy',
       choices: [
         {
@@ -139,9 +139,9 @@ window.Game.StoryData = (function () {
       dialogue: [
         'Lena grins. "Bold. The squad\'s going to need time to learn this system."',
         '"Paulo won\'t love the patience required. But if it works..."',
-        '"Let\'s start by looking at the youth academy. I think there\'s someone you should see."',
+        '"Come on — there\'s someone in the youth academy I think you need to meet."',
       ],
-      next: 'tour_choice',
+      next: 'meet_kai',
     },
 
     style_pragmatist_reaction: {
@@ -151,9 +151,9 @@ window.Game.StoryData = (function () {
       dialogue: [
         'Lena nods slowly. "Paulo will be happy. The board love a results-first manager."',
         '"Just be careful — if we push too hard, we might lose the dressing room."',
-        '"Let\'s make the most of the transfer window. We need quality, fast."',
+        '"Before you look at transfers, there\'s a kid in the youth setup worth five minutes of your time."',
       ],
-      next: 'tour_choice',
+      next: 'meet_kai',
     },
 
     style_champion_reaction: {
@@ -163,7 +163,25 @@ window.Game.StoryData = (function () {
       dialogue: [
         'Lena\'s eyes light up. "That\'s what this club needs. Real leadership."',
         '"The fans have been calling for something like this for years."',
-        '"Paulo might push back if results are slow. But the people will love you."',
+        '"There\'s a boy in the youth academy who\'s been waiting for a manager like you. Come and see."',
+      ],
+      next: 'meet_kai',
+    },
+
+    meet_kai: {
+      id: 'meet_kai', type: 'story', phase: 'preseason',
+      background: 'bg-training-ground',
+      character: 'prodigy', name: 'Kai Voss',
+      transition: {
+        location: 'FC Valhalla Youth Academy',
+        text: "Lena leads you to a smaller pitch at the back of the complex. A seventeen-year-old is running drills alone — no coach, no audience. He hasn't noticed you yet.",
+      },
+      dialogue: [
+        'Kai Voss stops mid-drill the moment he sees you. He stands very straight, like a soldier caught off-guard.',
+        '"This is Kai," Lena says. "Seventeen. Best left foot in the academy by a distance."',
+        'He doesn\'t say anything. Just looks at you with dark, serious eyes.',
+        '"He\'s not on the first-team list yet," Lena adds quietly. "But I think he should be."',
+        'Kai gives you a small nod. One sentence: "I\'m ready, Gaffer."',
       ],
       next: 'tour_choice',
     },
@@ -1417,7 +1435,8 @@ window.Game.StoryData = (function () {
     scenes.meet_marco,
     scenes.meet_roberto,
     scenes.style_choice,
-    // style_reaction is handled by branch from style_choice
+    // style_reaction is handled by branch from style_choice → leads to meet_kai
+    scenes.meet_kai,
     scenes.tour_choice,
     scenes.budget_choice,
     scenes.transfer_window_1,
