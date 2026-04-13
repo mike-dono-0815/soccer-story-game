@@ -571,13 +571,21 @@
   flex-shrink: 0;
 }
 
-/* Flying effect chips after a choice is made */
+/* Flying effect chips — anchored to animZone for correct positioning */
 .effect-burst-overlay {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 9999;
   overflow: visible;
+}
+/* Full-screen tap layer that appears after chips settle */
+.effect-tap-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 10000;
 }
 .effect-chip {
   position: absolute;

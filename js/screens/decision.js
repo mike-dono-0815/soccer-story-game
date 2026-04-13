@@ -42,11 +42,10 @@ window.Game.Screens.Decision = (function () {
   function showEffectBurst(effects, container, onDone) {
     if (!effects.length) { onDone(); return; }
 
-    // Attach to game-container so the tap zone covers the full screen
-    const fullScreen = document.querySelector('.game-container') || container;
-    const overlay = document.createElement('div');
-    overlay.className = 'effect-burst-overlay';
-    fullScreen.appendChild(overlay);
+    // Chips stay anchored to container (animZone) for correct positioning
+    const chipOverlay = document.createElement('div');
+    chipOverlay.className = 'effect-burst-overlay';
+    container.appendChild(chipOverlay);
 
     const positive = effects.filter(e => e.val >= 0);
     const negative = effects.filter(e => e.val < 0);
@@ -66,33 +65,36 @@ window.Game.Screens.Decision = (function () {
       labelEl.textContent = effect.meta.label;
       chip.appendChild(iconEl);
       chip.appendChild(labelEl);
-      overlay.appendChild(chip);
+      chipOverlay.appendChild(chip);
     }
 
     positive.forEach((e, i) => makeChip(e, posPos[i], 'up',   i * 75));
     negative.forEach((e, i) => makeChip(e, negPos[i], 'down', i * 75));
 
-    // After animation settles, show continue hint and wait for tap
+    // After animation settles, add a separate full-screen tap layer with the hint
     const animMs = 2200 + (effects.length - 1) * 75;
     setTimeout(() => {
+      const fullScreen = document.querySelector('.game-container') || container;
+      const tapLayer = document.createElement('div');
+      tapLayer.className = 'effect-tap-layer';
+
       const hint = document.createElement('div');
       hint.className = 'effect-continue-hint';
       hint.textContent = 'tap anywhere to continue';
-      overlay.appendChild(hint);
+      tapLayer.appendChild(hint);
 
-      overlay.style.pointerEvents = 'auto';
-      overlay.style.cursor = 'pointer';
+      fullScreen.appendChild(tapLayer);
 
       let advanced = false;
       function advance() {
         if (advanced) return;
         advanced = true;
-        overlay.removeEventListener('click', advance);
-        overlay.removeEventListener('touchend', advance);
+        tapLayer.removeEventListener('click', advance);
+        tapLayer.removeEventListener('touchend', advance);
         onDone();
       }
-      overlay.addEventListener('click', advance);
-      overlay.addEventListener('touchend', function (e) {
+      tapLayer.addEventListener('click', advance);
+      tapLayer.addEventListener('touchend', function (e) {
         e.preventDefault();
         advance();
       }, { passive: false });
