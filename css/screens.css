@@ -630,16 +630,17 @@
 }
 .effect-continue-hint {
   position: absolute;
-  bottom: -28px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: calc(32px + var(--safe-bottom));
+  left: 0;
+  right: 0;
+  text-align: center;
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-dim);
   white-space: nowrap;
-  animation: fadeInHint 0.5s ease forwards;
+  animation: transition-hint-pulse 2.4s ease-in-out infinite;
 }
 @keyframes fadeInHint {
   from { opacity: 0; }

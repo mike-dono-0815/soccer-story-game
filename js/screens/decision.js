@@ -42,9 +42,11 @@ window.Game.Screens.Decision = (function () {
   function showEffectBurst(effects, container, onDone) {
     if (!effects.length) { onDone(); return; }
 
+    // Attach to game-container so the tap zone covers the full screen
+    const fullScreen = document.querySelector('.game-container') || container;
     const overlay = document.createElement('div');
     overlay.className = 'effect-burst-overlay';
-    container.appendChild(overlay);
+    fullScreen.appendChild(overlay);
 
     const positive = effects.filter(e => e.val >= 0);
     const negative = effects.filter(e => e.val < 0);
@@ -75,19 +77,25 @@ window.Game.Screens.Decision = (function () {
     setTimeout(() => {
       const hint = document.createElement('div');
       hint.className = 'effect-continue-hint';
-      hint.textContent = 'Tap to continue';
+      hint.textContent = 'tap anywhere to continue';
       overlay.appendChild(hint);
 
       overlay.style.pointerEvents = 'auto';
       overlay.style.cursor = 'pointer';
 
+      let advanced = false;
       function advance() {
+        if (advanced) return;
+        advanced = true;
         overlay.removeEventListener('click', advance);
         overlay.removeEventListener('touchend', advance);
         onDone();
       }
       overlay.addEventListener('click', advance);
-      overlay.addEventListener('touchend', advance, { passive: true });
+      overlay.addEventListener('touchend', function (e) {
+        e.preventDefault();
+        advance();
+      }, { passive: false });
     }, animMs);
   }
 
