@@ -638,7 +638,7 @@
 }
 .effect-continue-hint {
   position: absolute;
-  bottom: calc(32px + var(--safe-bottom));
+  top: calc(16px + var(--safe-top));
   left: 0;
   right: 0;
   text-align: center;
