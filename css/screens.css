@@ -1343,12 +1343,15 @@
 }
 .transfer-squad-btn {
   font-size: 12px;
-  font-weight: 600;
-  color: var(--accent-gold);
-  padding: 4px 0;
-  opacity: 0.85;
+  font-weight: 700;
+  color: #0d0f1a;
+  background: var(--accent-gold);
+  padding: 7px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
-.transfer-squad-btn:active { opacity: 0.6; }
+.transfer-squad-btn:active { opacity: 0.75; }
 .transfer-budget-bar {
   display: flex;
   align-items: center;

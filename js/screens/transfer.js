@@ -42,7 +42,7 @@ window.Game.Screens.Transfer = (function () {
     titleRow.appendChild(title);
     const squadBtn = document.createElement('button');
     squadBtn.className = 'transfer-squad-btn';
-    squadBtn.textContent = 'Squad ›';
+    squadBtn.textContent = 'See Current Squad';
     const onSquad = () => window.Game.Screens.Squad.render(() => window.Game.Screens.Transfer.render(nextSceneId));
     squadBtn.addEventListener('click', onSquad);
     squadBtn.addEventListener('touchend', e => { e.preventDefault(); onSquad(); }, { passive: false });
@@ -129,6 +129,16 @@ window.Game.Screens.Transfer = (function () {
     });
   }
 
+  const POSITION_GROUP = {
+    GK:  'Goalkeeper',
+    LB:  'Defender', CB:  'Defender', RB:  'Defender',
+    LWB: 'Defender', RWB: 'Defender',
+    CDM: 'Midfielder', CM: 'Midfielder', CAM: 'Midfielder',
+    LM:  'Midfielder', RM:  'Midfielder',
+    LW:  'Winger',   RW:  'Winger',
+    CF:  'Forward',  ST:  'Forward',
+  };
+
   function buildPlayerCard(player, action, state) {
     const { Utils } = window.Game;
     const card = document.createElement('div');
@@ -139,9 +149,10 @@ window.Game.Screens.Transfer = (function () {
     const name = document.createElement('div');
     name.className = 'transfer-card-name';
     name.textContent = player.name;
+    const group = POSITION_GROUP[player.position] || '';
     const detail = document.createElement('div');
     detail.className = 'transfer-card-detail';
-    detail.textContent = `${player.position} · Age ${player.age}`;
+    detail.textContent = `${player.position}${group ? ' · ' + group : ''} · Age ${player.age}`;
 
     const stats = document.createElement('div');
     stats.className = 'transfer-card-stats';
