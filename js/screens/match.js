@@ -78,13 +78,26 @@ window.Game.Screens.Match = (function () {
 
     content.appendChild(scrollArea);
 
+    // Player of the Match
+    if (summary.potm) {
+      const potmSection = buildPotm(summary.potm);
+      scrollArea.appendChild(potmSection);
+    }
+
     // Continue
     const footer = document.createElement('div');
     footer.className = 'match-footer';
     const btn = document.createElement('button');
     btn.className = 'btn-primary';
     btn.textContent = 'Continue';
-    const onDone = () => { if (scene.next) Engine.advance(scene.next); else Engine.next(); };
+    const advance = () => { if (scene.next) Engine.advance(scene.next); else Engine.next(); };
+    const onDone = () => {
+      if (summary.keyMoment) {
+        window.Game.Screens.PlayerMoment.show(summary.keyMoment, advance);
+      } else {
+        advance();
+      }
+    };
     btn.addEventListener('click', onDone);
     btn.addEventListener('touchend', e => { e.preventDefault(); onDone(); }, { passive: false });
     footer.appendChild(btn);
@@ -233,6 +246,30 @@ window.Game.Screens.Match = (function () {
     });
 
     return pane;
+  }
+
+  // ── Player of the Match ───────────────────────────────────────
+
+  function buildPotm(potm) {
+    const wrap = document.createElement('div');
+    wrap.className = 'match-potm';
+
+    const label = document.createElement('div');
+    label.className = 'match-potm-label';
+    label.textContent = '⭐ Player of the Match';
+
+    const name = document.createElement('div');
+    name.className = 'match-potm-name';
+    name.textContent = potm.name;
+
+    const detail = document.createElement('div');
+    detail.className = 'match-potm-detail';
+    detail.textContent = `${potm.position} · Rating ${potm.rating}`;
+
+    wrap.appendChild(label);
+    wrap.appendChild(name);
+    wrap.appendChild(detail);
+    return wrap;
   }
 
   // ── Report ────────────────────────────────────────────────────
