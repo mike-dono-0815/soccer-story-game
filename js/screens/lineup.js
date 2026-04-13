@@ -198,7 +198,7 @@ window.Game.Screens.Lineup = (function () {
       const card = document.createElement('div');
       card.className = `player-card-small group-${group} ${inSlot ? 'starter' : ''}`;
       card.dataset.playerId = player.id;
-      card.style.touchAction = 'none';
+      card.style.touchAction = 'pan-y'; // allow vertical scroll by default
 
       const numEl = document.createElement('div');
       numEl.className = `player-num ${inSlot ? 'starter' : ''}`;
@@ -223,7 +223,49 @@ window.Game.Screens.Lineup = (function () {
       card.appendChild(infoEl);
       card.appendChild(ratingEl);
 
-      card.addEventListener('pointerdown', e => startDrag(e, player.id, null));
+      // Long-press to drag (avoids clashing with list scroll).
+      // Quick tap → toggle player in/out of lineup.
+      // Hold ~350ms without moving → initiate drag to a specific slot.
+      card.addEventListener('pointerdown', e => {
+        let lastX = e.clientX, lastY = e.clientY;
+        const sx = e.clientX, sy = e.clientY;
+        let committed = false;
+
+        function cleanup() {
+          clearTimeout(holdTimer);
+          document.removeEventListener('pointermove', onEarlyMove);
+          document.removeEventListener('pointerup',   onEarlyUp);
+        }
+
+        function onEarlyMove(ev) {
+          lastX = ev.clientX; lastY = ev.clientY;
+          // Any movement beyond 10px cancels the hold — treat as scroll
+          if (Math.abs(ev.clientX - sx) > 10 || Math.abs(ev.clientY - sy) > 10) {
+            committed = true; // mark so onEarlyUp doesn't fire tap
+            cleanup();
+          }
+        }
+
+        function onEarlyUp() {
+          if (!committed) onCardClick(player.id); // short tap → toggle
+          cleanup();
+        }
+
+        const holdTimer = setTimeout(() => {
+          committed = true;
+          cleanup();
+          // Start drag from last known pointer position
+          const fakeE = { clientX: lastX, clientY: lastY, preventDefault: () => {} };
+          startDrag(fakeE, player.id, null);
+          // Mark as already moved so the drag ghost shows immediately
+          if (drag) drag.moved = true;
+          pitchEl.querySelectorAll('.lineup-position-slot').forEach(s => s.classList.add('drag-available'));
+        }, 350);
+
+        document.addEventListener('pointermove', onEarlyMove);
+        document.addEventListener('pointerup',   onEarlyUp);
+      });
+
       return card;
     }
 
@@ -274,7 +316,7 @@ window.Game.Screens.Lineup = (function () {
 
     function startDrag(e, playerId, sourceSlotIdx) {
       if (drag) return;
-      e.preventDefault();
+      if (e.preventDefault) e.preventDefault();
 
       const ghost = document.createElement('div');
       ghost.className = 'lineup-drag-ghost';
