@@ -356,6 +356,15 @@ window.Game.Engine = (function () {
   function routeScene(scene) {
     if (!scene) return;
 
+    // Show narrative transition card if the scene defines one
+    if (scene.transition) {
+      Screens.Transition.show(scene.transition, () => _doRouteScene(scene));
+      return;
+    }
+    _doRouteScene(scene);
+  }
+
+  function _doRouteScene(scene) {
     switch (scene.type) {
       case 'story':
         Screens.Scene.render(scene, null); // scene.js handles advance via scene.next or next()

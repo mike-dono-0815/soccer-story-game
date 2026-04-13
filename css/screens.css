@@ -2190,3 +2190,91 @@
   text-transform: uppercase;
   cursor: pointer;
 }
+
+/* ============================================================
+   TRANSITION SCREEN
+   ============================================================ */
+
+.screen-transition {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #05060f 0%, #0a0c1a 50%, #070810 100%);
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  padding: 48px 32px calc(48px + var(--safe-bottom));
+}
+
+/* Subtle vignette overlay */
+.screen-transition::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, transparent 40%, rgba(0,0,0,0.55) 100%);
+  pointer-events: none;
+}
+
+/* Decorative gold accent line at top */
+.transition-accent {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent-gold) 30%, var(--accent-gold) 70%, transparent 100%);
+  opacity: 0.6;
+}
+
+.transition-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+}
+
+.transition-location {
+  font-family: var(--font-body);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent-gold);
+  opacity: 0.85;
+  margin-bottom: 14px;
+}
+
+.transition-rule {
+  width: 40px;
+  height: 1px;
+  background: rgba(245, 200, 66, 0.35);
+  margin: 0 auto 28px;
+}
+
+.transition-text {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1.75;
+  color: rgba(240, 240, 240, 0.88);
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+
+.transition-hint {
+  position: absolute;
+  bottom: calc(32px + var(--safe-bottom));
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  animation: transition-hint-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes transition-hint-pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.9; }
+}

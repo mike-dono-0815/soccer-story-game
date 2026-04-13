@@ -29,6 +29,10 @@ window.Game.StoryData = (function () {
       id: 'intro', type: 'story', phase: 'preseason',
       background: 'bg-training-ground',
       character: 'assistant', name: 'Lena Brandt',
+      transition: {
+        location: 'FC Valhalla Training Ground',
+        text: 'You arrive at FC Valhalla on a damp morning in late July. The training ground sits on the edge of town — modest, lived-in, oddly charming. Your new assistant coach is waiting by the gates.',
+      },
       dialogue: [
         'Welcome to Valhalla, Gaffer. I\'m Lena — your assistant. I\'ve been here six years.',
         'The training ground isn\'t much, but the squad has heart. We finished ninth last season.',
@@ -43,6 +47,10 @@ window.Game.StoryData = (function () {
       id: 'meet_paulo', type: 'story', phase: 'preseason',
       background: 'bg-office',
       character: 'chairman', name: 'Paulo Ferretti',
+      transition: {
+        location: "The Chairman's Office",
+        text: "Lena leads you inside — past a corridor of dusty trophies and faded photographs from better decades — and stops at a heavy door at the far end. She knocks twice and steps aside. 'He's been waiting,' she says quietly.",
+      },
       dialogue: [
         'You\'re finally here. Good. Sit down.',
         'I didn\'t hire you to be comfortable. I hired you to win. Top four, minimum. Understand?',
@@ -58,6 +66,10 @@ window.Game.StoryData = (function () {
       id: 'meet_marco', type: 'story', phase: 'preseason',
       background: 'bg-training-ground',
       character: 'star', name: 'Marco Silva',
+      transition: {
+        location: 'The Training Gym',
+        text: "You follow Lena through a side door into the gym. It smells of liniment and rubber mats. In the far corner, Marco 'El Tornado' Silva sits alone on a bench — phone in hand, not looking up as you walk in.",
+      },
       dialogue: [
         'Marco "El Tornado" Silva barely glances up from his phone as you approach.',
         '"Oh. The new gaffer. Cool." He goes back to scrolling.',
@@ -73,6 +85,10 @@ window.Game.StoryData = (function () {
       id: 'meet_roberto', type: 'story', phase: 'preseason',
       background: 'bg-training-ground',
       character: 'veteran', name: 'Roberto Okafor',
+      transition: {
+        location: 'FC Valhalla Training Pitch',
+        text: "Back outside, the morning session is winding down. Across the pitch, a broad-shouldered figure with grey at his temples jogs over and raises a hand in greeting. Thirty-four years old. Seventeen seasons as a professional.",
+      },
       dialogue: [
         'Roberto Okafor walks over with a warm smile and a firm handshake.',
         '"Good to have you, Gaffer. The boys need direction. I\'ll back you — we all will."',
@@ -88,6 +104,10 @@ window.Game.StoryData = (function () {
       id: 'style_choice', type: 'decision', phase: 'preseason',
       background: 'bg-training-ground',
       character: 'assistant', name: 'Lena Brandt',
+      transition: {
+        location: 'First Team Training Session',
+        text: "The full squad assembles for the first time under your management. Forty-two faces look back at you — some curious, some sceptical, a few openly sizing you up. The noise of studs on concrete fades to silence. They're waiting.",
+      },
       prompt: 'Lena hands you a whiteboard. "First session with the full squad tomorrow. What\'s our identity going to be, Gaffer?"',
       calendarLabel: 'Define Your Philosophy',
       choices: [
@@ -152,6 +172,10 @@ window.Game.StoryData = (function () {
       id: 'tour_choice', type: 'decision', phase: 'preseason',
       background: 'bg-office',
       character: 'chairman', name: 'Paulo Ferretti',
+      transition: {
+        location: "The Chairman's Office",
+        text: "Paulo's assistant calls you back before you've even reached the car park. The pre-season calendar is already spread across his marble desk. A pen is waiting. He has, as usual, already decided what the options are.",
+      },
       prompt: '"I\'ve arranged a pre-season tour. Three options. Pick one — it goes out tomorrow."',
       calendarLabel: 'Pre-Season Tour',
       choices: [
@@ -249,6 +273,10 @@ window.Game.StoryData = (function () {
       id: 'budget_choice', type: 'decision', phase: 'preseason',
       background: 'bg-office',
       character: 'chairman', name: 'Paulo Ferretti',
+      transition: {
+        location: "The Chairman's Office",
+        text: "A second meeting with Paulo, this one more practical. A budget spreadsheet is open on his screen. Numbers that will define your season before it has even begun. He swivels the monitor to face you.",
+      },
       prompt: '"Beyond transfers, we\'ve got limited funds for infrastructure. Where do you want to put the focus?"',
       calendarLabel: 'Budget Allocation',
       choices: [
@@ -276,6 +304,10 @@ window.Game.StoryData = (function () {
 
     transfer_window_1: {
       id: 'transfer_window_1', type: 'minigame', phase: 'preseason',
+      transition: {
+        location: 'Transfer Window — Pre-Season',
+        text: "The transfer window opens. Your phone starts ringing before you've sat down. Agents, scouts, intermediaries. The budget is set. The squad has gaps. It's time to build something.",
+      },
       miniGameType: 'transfer',
       calendarLabel: 'Transfer Window',
       next: 'captain_choice',
@@ -285,6 +317,10 @@ window.Game.StoryData = (function () {
       id: 'captain_choice', type: 'decision', phase: 'preseason',
       background: 'bg-training-ground',
       character: 'assistant', name: 'Lena Brandt',
+      transition: {
+        location: 'Training Ground Corridor',
+        text: "A week before the season opener, Lena pulls you aside in the corridor. 'We need to talk about the armband,' she says. 'The players have been waiting. They need to hear it from you.'",
+      },
       prompt: '"Gaffer — before the season starts, the squad needs to know who\'s wearing the armband."',
       calendarLabel: 'Choose Captain',
       choices: [
@@ -364,6 +400,10 @@ window.Game.StoryData = (function () {
 
     match_friendly: {
       id: 'match_friendly', type: 'match', phase: 'preseason',
+      transition: {
+        location: 'Nordstrom Park — Pre-Season',
+        text: "Your first match as Valhalla manager. The ground is half-full, the sun is low, and the opposition won't press hard. But the players are watching every move you make in the dugout. Everything starts here.",
+      },
       competition: 'Pre-Season Friendly',
       opponent: 'Northgate City',
       homeAway: 'home',
@@ -377,6 +417,10 @@ window.Game.StoryData = (function () {
       id: 'paulo_demands', type: 'decision', phase: 'preseason',
       background: 'bg-office',
       character: 'chairman', name: 'Paulo Ferretti',
+      transition: {
+        location: "The Chairman's Office — Post Pre-Season",
+        text: "You return from the friendly to find a message from Paulo's assistant. He wants a meeting this evening. His door is already open when you arrive. He doesn't ask how the game went.",
+      },
       prompt: '"Good pre-season. Now — how do you define success this year? Because mine is clear: trophies."',
       calendarLabel: 'Board Meeting — Expectations',
       choices: [
@@ -429,6 +473,10 @@ window.Game.StoryData = (function () {
 
     match_league_1: {
       id: 'match_league_1', type: 'match', phase: 'league',
+      transition: {
+        location: 'Nordstrom Park — Matchday One',
+        text: "The season is here. Sixty-two thousand people in the stands, all of them watching you. In the tunnel, the noise is a physical thing. You pull your jacket straight and walk out.",
+      },
       competition: 'VPL',
       opponent: 'Red Storm FC',
       homeAway: 'home',
@@ -442,6 +490,10 @@ window.Game.StoryData = (function () {
       id: 'post_match_1', type: 'decision', phase: 'league',
       background: 'bg-press-room',
       character: 'journalist', name: 'Alexandra Chen',
+      transition: {
+        location: 'Post-Match Press Room',
+        text: "The noise of the crowd is still ringing in your ears as you take the seat in front of the cameras. The press room is packed. Alexandra Chen from the Valorian Tribune has her recorder out and her eyes on you.",
+      },
       prompt: '"Gaffer, first game of the season — what\'s your honest assessment of the performance?"',
       calendarLabel: 'Post-Match Press',
       choices: [
@@ -499,6 +551,10 @@ window.Game.StoryData = (function () {
       id: 'injury_event', type: 'decision', phase: 'league',
       background: 'bg-training-ground',
       character: 'assistant', name: 'Lena Brandt',
+      transition: {
+        location: 'Training Ground — Emergency',
+        text: "It happens in a Thursday five-a-side. A mistimed challenge. Marco goes down and doesn't get up immediately. The training ground goes very quiet. Lena is already on her phone before you reach him.",
+      },
       prompt: '"Gaffer — bad news. Marco took a knock in training. The physio says three weeks minimum. What do we do?"',
       calendarLabel: 'Marco Injured!',
       choices: [
@@ -565,6 +621,10 @@ window.Game.StoryData = (function () {
       id: 'board_pressure_1', type: 'decision', phase: 'league',
       background: 'bg-office',
       character: 'chairman', name: 'Paulo Ferretti',
+      transition: {
+        location: "The Chairman's Office",
+        text: "Paulo's assistant calls at seven in the morning. The chairman wants to see you before training. His tone, as always, leaves no room for delay.",
+      },
       prompt: '"I\'m watching the table. We\'re not where I expected. What\'s your explanation?"',
       calendarLabel: 'Board Meeting — Pressure',
       choices: [
@@ -594,6 +654,10 @@ window.Game.StoryData = (function () {
       id: 'match_league_3', type: 'match', phase: 'league',
       competition: 'VPL',
       opponent: 'Ironclad United',
+      transition: {
+        location: 'Nordstrom Park — VPL Matchday',
+        text: "Ironclad United. The fixture that's been circled on every calendar in the city since the draw was made. Paulo has texted you twice already this morning. The squad is silent on the coach.",
+      },
       homeAway: 'home',
       difficulty: 0.60,
       week: 6,
@@ -605,6 +669,10 @@ window.Game.StoryData = (function () {
       id: 'discipline_event', type: 'decision', phase: 'league',
       background: 'bg-locker-room',
       character: 'assistant', name: 'Lena Brandt',
+      transition: {
+        location: 'Training Ground — Monday Morning',
+        text: "You haven't finished your coffee when Lena appears in the doorway. She has that look — the one that means something has already gone wrong before the week has even started.",
+      },
       prompt: '"Gaffer — Sven Halberg was spotted in a nightclub at 2am before the match. Do you address this?"',
       calendarLabel: 'Discipline Decision',
       choices: [
@@ -678,6 +746,10 @@ window.Game.StoryData = (function () {
       id: 'champions_group_1', type: 'match', phase: 'cups',
       competition: 'Champions Cup',
       opponent: 'FC Bayern Klauss',
+      transition: {
+        location: 'Away — Champions Cup Group Stage',
+        text: "Your first European away trip. A cold, grey stadium in a foreign city. Flags from a dozen nations fill the stands. This is a different level of football entirely — and everyone in the dressing room knows it.",
+      },
       homeAway: 'away',
       difficulty: 0.60,
       week: 7,
@@ -707,6 +779,10 @@ window.Game.StoryData = (function () {
       id: 'contract_decision', type: 'decision', phase: 'league',
       background: 'bg-office',
       character: 'veteran', name: 'Roberto Okafor',
+      transition: {
+        location: "Manager's Office — Tuesday Afternoon",
+        text: "Roberto Okafor knocks on your office door one Tuesday afternoon. He's dressed in training gear, but he's not there to talk about football. He closes the door softly behind him.",
+      },
       prompt: '"Gaffer, I need to know — is there a contract extension? I\'m out of contract in June. I want to finish here."',
       calendarLabel: 'Roberto\'s Contract',
       choices: [
@@ -733,6 +809,10 @@ window.Game.StoryData = (function () {
 
     fa_cup_qf: {
       id: 'fa_cup_qf', type: 'match', phase: 'cups',
+      transition: {
+        location: 'Nordstrom Park — FA Cup Quarter-Final',
+        text: "One match separates Valhalla from an FA Cup semi-final. The ground is buzzing with a kind of nervous energy you haven't felt before. It feels like the whole city turned up.",
+      },
       competition: 'FA Cup',
       opponent: 'Willowbrook City',
       homeAway: 'home',
@@ -813,6 +893,10 @@ window.Game.StoryData = (function () {
       id: 'player_conflict', type: 'decision', phase: 'league',
       background: 'bg-locker-room',
       character: 'assistant', name: 'Lena Brandt',
+      transition: {
+        location: 'Training Ground — Dressing Room',
+        text: "You can hear the raised voices from the corridor before you've even reached the door. Roberto. Marco. The words are muffled, but the tone is unmistakable. The rest of the squad has gone very quiet.",
+      },
       prompt: '"There\'s been a blow-up in training. Marco and Roberto — they\'re not speaking. The dressing room is split."',
       calendarLabel: 'Dressing Room Conflict',
       choices: [
@@ -841,6 +925,10 @@ window.Game.StoryData = (function () {
       id: 'mentorship_scene', type: 'decision', phase: 'league',
       background: 'bg-training-ground',
       character: 'assistant', name: 'Lena Brandt',
+      transition: {
+        location: 'Training Ground — Late Afternoon',
+        text: "The squad have gone home. The lights are being switched off one by one. Lena lingers in the doorway of the coaches' room with a look on her face that means she has something she needs to say.",
+      },
       prompt: '"Kai Voss is struggling with the pace of professional life. Should we pair him with Roberto as a mentor?"',
       calendarLabel: 'Mentorship Decision',
       choices: [
@@ -869,6 +957,10 @@ window.Game.StoryData = (function () {
       id: 'media_crisis', type: 'decision', phase: 'league',
       background: 'bg-press-room',
       character: 'journalist', name: 'Alexandra Chen',
+      transition: {
+        location: 'Match Week — Morning',
+        text: "You see the headline on your phone before you've left the house. 'Valhalla Dressing Room In Meltdown.' The story has been up for three hours and it's already trending. Your phone won't stop.",
+      },
       prompt: '"A tabloid is running a story: \'Valhalla Dressing Room In Meltdown\'. True or not — this is going to run. How do you respond?"',
       calendarLabel: 'Media Crisis',
       choices: [
@@ -898,6 +990,10 @@ window.Game.StoryData = (function () {
       competition: 'VPL',
       opponent: 'Ironclad United',
       homeAway: 'away',
+      transition: {
+        location: 'Ironclad Stadium — VPL Derby',
+        text: "The away end is already full when your coach rolls in. Your name is on the graffiti outside. The atmosphere is hostile, electric, and entirely alive. This is the kind of match that defines seasons — and managers.",
+      },
       difficulty: 0.65,
       week: 13,
       calendarLabel: 'Derby — vs. Ironclad (A)',
@@ -908,6 +1004,10 @@ window.Game.StoryData = (function () {
       id: 'transfer_deadline', type: 'decision', phase: 'league',
       background: 'bg-transfer-room',
       character: 'assistant', name: 'Lena Brandt',
+      transition: {
+        location: 'Transfer Deadline Day',
+        text: "Lena is on two phones at once when you walk in. Agents have been texting since 6am. The clock on the wall says ninety minutes remain before the window slams shut. Then the fax machine starts.",
+      },
       prompt: '"Transfer deadline — 90 minutes left. A club has bid £14M for Marco Silva. Paulo says it\'s our call. What do you do?"',
       calendarLabel: 'Transfer Deadline Day',
       choices: [
@@ -937,6 +1037,10 @@ window.Game.StoryData = (function () {
       id: 'fan_event', type: 'decision', phase: 'league',
       background: 'bg-stadium-dawn',
       character: 'assistant', name: 'Lena Brandt',
+      transition: {
+        location: 'Nordstrom Park — Community Day',
+        text: "A Saturday morning in the off-week. The Valhalla Supporters' Trust has set up a marquee outside Nordstrom Park. Fans of all ages are already queuing. Some are wearing shirts thirty years old.",
+      },
       prompt: '"The Valhalla Supporters\' Trust has invited you to a community day at the ground. Paulo says it\'s optional."',
       calendarLabel: 'Community Day',
       choices: [
@@ -1027,6 +1131,10 @@ window.Game.StoryData = (function () {
       id: 'locker_room_talk', type: 'decision', phase: 'league',
       background: 'bg-locker-room',
       character: 'assistant', name: 'Lena Brandt',
+      transition: {
+        location: 'The Dressing Room — Season Run-In',
+        text: "The most important three weeks of the season. You push open the dressing room door. Twenty-three players look up. Steam from the showers. Boots scattered across the floor. The sound of a whole city holding its breath.",
+      },
       prompt: '"It\'s crunch time — three competitions still alive. The squad is tired. What\'s your message in the dressing room?"',
       calendarLabel: 'Dressing Room Address',
       choices: [
@@ -1071,6 +1179,10 @@ window.Game.StoryData = (function () {
       id: 'paulo_final_meeting', type: 'decision', phase: 'league',
       background: 'bg-office',
       character: 'chairman', name: 'Paulo Ferretti',
+      transition: {
+        location: "The Chairman's Office",
+        text: "Paulo's car is already in the car park when you arrive at eight in the morning. That's never a good sign. His assistant meets you in the corridor and says nothing. She just holds the door open.",
+      },
       prompt: '"Sit down. I need to know — are we going all the way this year? Or do I need to make changes?"',
       calendarLabel: 'Board Ultimatum',
       choices: [
@@ -1107,6 +1219,10 @@ window.Game.StoryData = (function () {
 
     match_title_decider: {
       id: 'match_title_decider', type: 'match', phase: 'league',
+      transition: {
+        location: 'Nordstrom Park — VPL Final Day',
+        text: "Final day of the season. Every decision, every sleepless night, every choice you've made since arriving at Valhalla — it all comes down to these ninety minutes. The ground is sold out. It has been for weeks.",
+      },
       competition: 'VPL',
       opponent: 'Castello FC',
       homeAway: 'home',
@@ -1119,6 +1235,10 @@ window.Game.StoryData = (function () {
 
     fa_cup_final: {
       id: 'fa_cup_final', type: 'match', phase: 'cups',
+      transition: {
+        location: 'National Stadium — FA Cup Final',
+        text: "The biggest stage in the domestic game. The national stadium on a May afternoon. Sixty thousand supporters in club colours. Forty years of hurt on one side of the pitch, and everything to play for on the other.",
+      },
       competition: 'FA Cup',
       opponent: 'Ironclad United',
       homeAway: 'away',
@@ -1131,6 +1251,10 @@ window.Game.StoryData = (function () {
 
     champions_final: {
       id: 'champions_final', type: 'match', phase: 'cups',
+      transition: {
+        location: 'Champions Cup Final',
+        text: "The biggest night of your managerial career. A neutral venue. A full house. The Champions Cup on a table behind the goal, glinting under the floodlights. This is everything you came here to do.",
+      },
       competition: 'Champions Cup',
       opponent: 'Dynamo Vostok',
       homeAway: 'away',
@@ -1152,6 +1276,10 @@ window.Game.StoryData = (function () {
 
     cwc_r16: {
       id: 'cwc_r16', type: 'match', phase: 'worlds',
+      transition: {
+        location: 'Club World Cup — Round of 16',
+        text: "The Club World Cup. The best clubs on the planet, in one tournament, on a neutral stage. Valhalla — a club from a small city — standing alongside the giants of world football. Nobody gave you a chance to be here.",
+      },
       competition: 'Club World Cup',
       opponent: 'Santos Esmeralda',
       homeAway: 'home',
@@ -1163,6 +1291,10 @@ window.Game.StoryData = (function () {
 
     cwc_qf: {
       id: 'cwc_qf', type: 'match', phase: 'worlds',
+      transition: {
+        location: 'Club World Cup — Quarter-Final',
+        text: "You've come this far. The quarter-final. Win this and Valhalla are in the last four clubs standing in the whole world. Three more wins from something no one thought was possible.",
+      },
       competition: 'Club World Cup',
       opponent: 'Atlético Porteño',
       homeAway: 'home',
@@ -1174,6 +1306,10 @@ window.Game.StoryData = (function () {
 
     cwc_sf: {
       id: 'cwc_sf', type: 'match', phase: 'worlds',
+      transition: {
+        location: 'Club World Cup — Semi-Final',
+        text: "Two matches from becoming world champions. The semi-final. The whole of Valoria is watching. Paulo Ferretti flew out to be in the stands. Even Lena looks nervous.",
+      },
       competition: 'Club World Cup',
       opponent: 'Shoguns FC',
       homeAway: 'neutral',
@@ -1185,6 +1321,10 @@ window.Game.StoryData = (function () {
 
     cwc_final: {
       id: 'cwc_final', type: 'match', phase: 'worlds',
+      transition: {
+        location: 'Club World Cup — The Final',
+        text: "This is it. The last game. One match between Valhalla and a place in history no one will ever be able to take away. The tunnel is dark and silent. Somewhere above you, a hundred thousand people are waiting.",
+      },
       competition: 'Club World Cup',
       opponent: 'Dynamo Vostok',
       homeAway: 'neutral',
