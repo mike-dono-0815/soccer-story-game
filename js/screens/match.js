@@ -17,6 +17,8 @@ window.Game.Screens.Match = (function () {
     State.save();
 
     const summary = window.Game.MatchSummary.generate(scene, result, state);
+    State.recordPlayerStats(summary.events, summary.potm, scene.competition || 'VPL', state.lineup);
+    State.save();
 
     const isHome     = scene.homeAway === 'home';
     const homeTeam   = isHome ? 'FC Valhalla' : (scene.opponent || 'Opponent');
@@ -132,6 +134,18 @@ window.Game.Screens.Match = (function () {
     scoreBox.className = 'match-sb-score';
     scoreBox.innerHTML = `<span class="sb-num">${result.homeGoals}</span><span class="sb-dash">–</span><span class="sb-num">${result.awayGoals}</span>`;
 
+    if (result.method === 'aet') {
+      const badge = document.createElement('div');
+      badge.className = 'sb-method-badge';
+      badge.textContent = 'AET';
+      scoreBox.appendChild(badge);
+    } else if (result.method === 'penalties' && result.penScore) {
+      const badge = document.createElement('div');
+      badge.className = 'sb-method-badge';
+      badge.textContent = `${result.penScore.home}–${result.penScore.away} pens`;
+      scoreBox.appendChild(badge);
+    }
+
     const aName = document.createElement('div');
     aName.className = 'match-sb-team' + (!isHome ? ' valhalla' : '');
     aName.textContent = awayTeam;
@@ -222,6 +236,23 @@ window.Game.Screens.Match = (function () {
         row.appendChild(body);
         row.appendChild(score);
 
+      } else if (ev.type === 'penalties') {
+        row.className = 'match-tl-row penalties' + (ev.isValhalla ? ' our-goal' : ' their-goal');
+        const icon = document.createElement('span');
+        icon.className = 'tl-icon';
+        icon.textContent = '🥅';
+        const body = document.createElement('div');
+        body.className = 'tl-body';
+        const main = document.createElement('div');
+        main.className = 'tl-main';
+        main.innerHTML = `<span class="tl-min">Pen.</span><span class="tl-scorer">Penalty Shootout</span>`;
+        body.appendChild(main);
+        const score = document.createElement('div');
+        score.className = 'tl-score';
+        score.textContent = `${ev.penHome}–${ev.penAway}`;
+        row.appendChild(icon);
+        row.appendChild(body);
+        row.appendChild(score);
       } else {
         const iconMap = { near_miss: '💨', save: '🧤', near_miss_opp: '💨', yellow: '🟨', yellow_opp: '🟨' };
         row.className = 'match-tl-row filler' + (ev.isValhalla ? '' : ' theirs');
@@ -252,7 +283,7 @@ window.Game.Screens.Match = (function () {
 
   function buildPotm(potm) {
     const wrap = document.createElement('div');
-    wrap.className = 'match-potm';
+    wrap.className = `match-potm${potm.isOpponent ? ' opponent' : ''}`;
 
     const label = document.createElement('div');
     label.className = 'match-potm-label';
@@ -264,7 +295,11 @@ window.Game.Screens.Match = (function () {
 
     const detail = document.createElement('div');
     detail.className = 'match-potm-detail';
-    detail.textContent = `${potm.position} · Rating ${potm.rating}`;
+    if (potm.isOpponent) {
+      detail.textContent = potm.team;
+    } else {
+      detail.textContent = `${potm.position} · ${potm.team} · ${potm.rating}`;
+    }
 
     wrap.appendChild(label);
     wrap.appendChild(name);
@@ -286,7 +321,48 @@ window.Game.Screens.Match = (function () {
     return pane;
   }
 
-  // ── Outcome calculation (unchanged) ──────────────────────────
+  // ── Outcome calculation ───────────────────────────────────────
+
+  // Knockout rounds (non-group cup matches) must always have a winner
+  function isKnockoutMatch(scene) {
+    const groupScenes = new Set(['champions_group_1', 'champions_group_2']);
+    if (groupScenes.has(scene.id)) return false;
+    return ['FA Cup', 'Champions Cup', 'Club World Cup'].includes(scene.competition);
+  }
+
+  // Resolve a draw in a knockout round via AET or penalties
+  function resolveKODraw(scoreline, scene) {
+    const valIsHome = scene.homeAway !== 'away';
+    const r = Math.random();
+    // 65% chance goes to AET, 35% straight to penalties
+    const method = r < 0.65 ? 'aet' : 'penalties';
+    const valhallaWins = Math.random() < 0.5;
+
+    const { homeGoals, awayGoals } = scoreline; // draw score at 90 min
+
+    if (method === 'aet') {
+      const homeWinsAET = valIsHome ? valhallaWins : !valhallaWins;
+      return {
+        outcome: valhallaWins ? 'win' : 'loss',
+        homeGoals: homeGoals + (homeWinsAET ? 1 : 0),
+        awayGoals: awayGoals + (homeWinsAET ? 0 : 1),
+        method: 'aet',
+        penScore: null,
+        ninetyGoals: { home: homeGoals, away: awayGoals },
+      };
+    } else {
+      // Penalty shootout — realistic scores
+      const penOpts = valhallaWins ? [[4,3],[5,4],[5,3],[4,2]] : [[3,4],[4,5],[3,5],[2,4]];
+      const [valPen, oppPen] = penOpts[Math.floor(Math.random() * penOpts.length)];
+      return {
+        outcome: valhallaWins ? 'win' : 'loss',
+        homeGoals, awayGoals, // score stays at 90-min result
+        method: 'penalties',
+        penScore: { home: valIsHome ? valPen : oppPen, away: valIsHome ? oppPen : valPen },
+        ninetyGoals: { home: homeGoals, away: awayGoals },
+      };
+    }
+  }
 
   function calcOutcome(scene, state) {
     const s = state.story;
@@ -304,6 +380,13 @@ window.Game.Screens.Match = (function () {
     if (s.starSold || s.starInjured) score -= 0.08;
     if (state.lineup.includes('star') && !s.starSold && !s.starInjured) score += 0.04;
 
+    // Average squad rating factor: 76 = baseline (neutral), every ±10 pts ≈ ±0.067
+    const starters = state.lineup.map(id => state.squad.find(p => p.id === id)).filter(Boolean);
+    if (starters.length > 0) {
+      const avgRating = starters.reduce((sum, p) => sum + p.rating, 0) / starters.length;
+      score += (avgRating - 76) / 150;
+    }
+
     score += (Math.random() * 0.2) - 0.1;
 
     const difficulty = scene.difficulty || 0.5;
@@ -312,7 +395,14 @@ window.Game.Screens.Match = (function () {
     else if (score > difficulty - 0.08) outcome = 'draw';
     else                                 outcome = 'loss';
 
-    return buildScoreline(outcome, scene);
+    const scoreline = buildScoreline(outcome, scene);
+
+    // Knockout rounds must produce a winner — resolve draws via AET or penalties
+    if (scoreline.outcome === 'draw' && isKnockoutMatch(scene)) {
+      return resolveKODraw(scoreline, scene);
+    }
+
+    return { ...scoreline, method: 'normal', penScore: null, ninetyGoals: null };
   }
 
   function buildScoreline(outcome, scene) {

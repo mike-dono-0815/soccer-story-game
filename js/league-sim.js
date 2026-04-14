@@ -155,6 +155,44 @@ window.Game.LeagueSim = (function () {
     return SCENE_TO_ROUND[sceneId] ?? null;
   }
 
-  return { TEAMS, SCENE_TO_ROUND, simulateSeason, computeTable, scoreFromOutcome, getRoundForScene };
+  // ─── Between-match simulation ──────────────────────────────
+
+  // Simulate Valhalla's matches for rounds fromRound..toRound (1-based, inclusive).
+  // Overwrites those fixture entries in-place using valhallaStrength (avg squad rating).
+  // Returns array of result summaries for the summary screen.
+  function simulateBetweenRounds(fixtures, fromRound, toRound, valhallaStrength) {
+    const results = [];
+    for (let r = fromRound; r <= toRound; r++) {
+      const roundIdx = r - 1;
+      if (roundIdx >= fixtures.length) break;
+      const round = fixtures[roundIdx];
+      const matchIdx = round.findIndex(([h, a]) => h === 0 || a === 0);
+      if (matchIdx < 0) continue;
+
+      const [h, a] = round[matchIdx];
+      const isHome = h === 0;
+      const oppIdx = isHome ? a : h;
+      const opp = TEAMS[oppIdx];
+
+      let hg, ag;
+      if (isHome) {
+        [hg, ag] = simGoals(valhallaStrength, opp.strength);
+      } else {
+        [hg, ag] = simGoals(opp.strength, valhallaStrength);
+      }
+
+      // Overwrite the pre-simulated fixture
+      round[matchIdx] = [h, a, hg, ag];
+
+      const valGoals = isHome ? hg : ag;
+      const oppGoals = isHome ? ag : hg;
+      const outcome = valGoals > oppGoals ? 'win' : valGoals < oppGoals ? 'loss' : 'draw';
+
+      results.push({ round: r, opponent: opp.name, homeAway: isHome ? 'home' : 'away', outcome, valGoals, oppGoals });
+    }
+    return results;
+  }
+
+  return { TEAMS, SCENE_TO_ROUND, simulateSeason, computeTable, scoreFromOutcome, getRoundForScene, simulateBetweenRounds };
 
 })();

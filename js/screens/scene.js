@@ -32,7 +32,7 @@ window.Game.Screens.Scene = (function () {
     // Tap hint
     const tapHint = document.createElement('div');
     tapHint.className = 'scene-tap-hint';
-    tapHint.textContent = 'tap to advance';
+    tapHint.textContent = 'tap anywhere to continue';
     div.appendChild(tapHint);
 
     // Portrait area

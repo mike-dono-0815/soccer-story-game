@@ -356,12 +356,94 @@ window.Game.Engine = (function () {
   function routeScene(scene) {
     if (!scene) return;
 
+    // Before VPL story matches, simulate any skipped league rounds
+    if (scene.type === 'match' && (scene.competition === 'VPL' || !scene.competition)) {
+      const targetRound = window.Game.LeagueSim.getRoundForScene(scene.id);
+      const state = State.get();
+      if (targetRound && targetRound > state.league.round + 1) {
+        const fromRound = state.league.round + 1;
+        const toRound   = targetRound - 1;
+        const simResults = _runBetweenRoundSim(fromRound, toRound, state);
+        if (simResults.length > 0) {
+          Screens.LeagueRounds.show(simResults, () => {
+            if (scene.transition) {
+              Screens.Transition.show(scene.transition, () => _doRouteScene(scene));
+            } else {
+              _doRouteScene(scene);
+            }
+          });
+          return;
+        }
+      }
+    }
+
+    // Before cup story matches, reveal the other teams' round results
+    if (scene.type === 'match' && scene.competition && scene.competition !== 'VPL') {
+      const state = State.get();
+      if (state.cups) {
+        const cupData = window.Game.CupSim.getBetweenResults(scene.id, state.cups);
+        if (cupData && (cupData.groupMode || (cupData.matches && cupData.matches.length > 0))) {
+          Screens.CupRounds.show(cupData, () => {
+            if (scene.transition) {
+              Screens.Transition.show(scene.transition, () => _doRouteScene(scene));
+            } else {
+              _doRouteScene(scene);
+            }
+          });
+          return;
+        }
+      }
+    }
+
     // Show narrative transition card if the scene defines one
     if (scene.transition) {
       Screens.Transition.show(scene.transition, () => _doRouteScene(scene));
       return;
     }
     _doRouteScene(scene);
+  }
+
+  // Simulate Valhalla's league rounds fromRound..toRound, update state, return results
+  function _runBetweenRoundSim(fromRound, toRound, state) {
+    const { clamp } = Utils;
+    const { LeagueSim } = window.Game;
+
+    // Average rating of current starting lineup
+    const starters = state.lineup
+      .map(id => state.squad.find(p => p.id === id))
+      .filter(Boolean);
+    const avgStrength = starters.length > 0
+      ? starters.reduce((sum, p) => sum + p.rating, 0) / starters.length
+      : 76;
+
+    const results = LeagueSim.simulateBetweenRounds(
+      state.league.fixtures, fromRound, toRound, avgStrength
+    );
+
+    results.forEach(r => {
+      if      (r.outcome === 'win')  state.results.vplWins++;
+      else if (r.outcome === 'draw') state.results.vplDraws++;
+      else                           state.results.vplLosses++;
+
+      const moraleChange = r.outcome === 'win' ? 4 : r.outcome === 'draw' ? 1 : -5;
+      state.story.teamMorale     = clamp(state.story.teamMorale     + moraleChange, 0, 100);
+      const fanDelta = r.outcome === 'win' ? 3 : r.outcome === 'draw' ? 1 : -2;
+      state.story.fanReputation  = clamp(state.story.fanReputation  + fanDelta,    0, 100);
+
+      const short = r.outcome === 'win' ? 'W' : r.outcome === 'draw' ? 'D' : 'L';
+      state.results.lastResults.push(short);
+      if (state.results.lastResults.length > 10) state.results.lastResults.shift();
+    });
+
+    state.league.round = Math.max(state.league.round, toRound);
+
+    // Recompute league position from actual fixtures
+    const table = LeagueSim.computeTable(state.league.fixtures, state.league.round);
+    const posIdx = table.findIndex(row => row.id === 'valhalla');
+    if (posIdx >= 0) state.results.vplPosition = posIdx + 1;
+
+    State.save();
+    return results;
   }
 
   function _doRouteScene(scene) {

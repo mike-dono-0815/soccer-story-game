@@ -96,6 +96,7 @@ window.Game.State = (function () {
     trainingFocus: 'fitness',
     budget: 10,
     transferPool: DEFAULT_TRANSFER_POOL,
+    playerStats: {},  // { [playerId]: { apps, goals, assists, potm, leagueApps, leagueGoals, leagueAssists, leaguePotm } }
     story: {
       teamMorale: 50,
       teamStrengthBonus: 0,
@@ -150,6 +151,9 @@ window.Game.State = (function () {
           // Back-fill cups data for saves that pre-date this feature
           if (!_state.cups) {
             _state.cups = window.Game.CupSim.simulateAll();
+          }
+          if (!_state.playerStats) {
+            _state.playerStats = {};
           }
           return true; // has save
         }
@@ -214,9 +218,9 @@ window.Game.State = (function () {
   // Record match result. homeGoals/awayGoals are from the actual scoreline.
   function recordResult(competition, outcome, sceneId, homeGoals, awayGoals) {
     if (competition === 'VPL') {
-      if (outcome === 'win')  { _state.results.vplWins++;   _state.results.vplPosition = Math.max(1, _state.results.vplPosition - 2); }
-      if (outcome === 'draw') { _state.results.vplDraws++;  _state.results.vplPosition = Math.max(1, _state.results.vplPosition - 1); }
-      if (outcome === 'loss') { _state.results.vplLosses++; _state.results.vplPosition = Math.min(18, _state.results.vplPosition + 1); }
+      if (outcome === 'win')  _state.results.vplWins++;
+      if (outcome === 'draw') _state.results.vplDraws++;
+      if (outcome === 'loss') _state.results.vplLosses++;
       // Fan reputation tracks league form
       const fanDelta = outcome === 'win' ? 4 : outcome === 'draw' ? 1 : -3;
       _state.story.fanReputation = window.Game.Utils.clamp(_state.story.fanReputation + fanDelta, 0, 100);
@@ -233,6 +237,11 @@ window.Game.State = (function () {
             match[3] = awayGoals;
           }
           _state.league.round = Math.max(_state.league.round, round);
+
+          // Sync vplPosition from the actual computed table so hub and league screen always agree
+          const table = window.Game.LeagueSim.computeTable(_state.league.fixtures, _state.league.round);
+          const idx = table.findIndex(r => r.id === 'valhalla');
+          if (idx >= 0) _state.results.vplPosition = idx + 1;
         }
       }
     }
@@ -292,9 +301,49 @@ window.Game.State = (function () {
     // Track last 5 results
     const short = outcome === 'win' ? 'W' : outcome === 'draw' ? 'D' : 'L';
     _state.results.lastResults.push(short);
-    if (_state.results.lastResults.length > 5) _state.results.lastResults.shift();
+    if (_state.results.lastResults.length > 10) _state.results.lastResults.shift();
 
     save();
+  }
+
+  // Record per-player stats from a match summary
+  function recordPlayerStats(events, potm, competition, lineup) {
+    if (!_state.playerStats) _state.playerStats = {};
+    const isVPL = competition === 'VPL' || !competition;
+
+    function ensure(pid) {
+      if (!_state.playerStats[pid]) {
+        _state.playerStats[pid] = { apps: 0, goals: 0, assists: 0, potm: 0, leagueApps: 0, leagueGoals: 0, leagueAssists: 0, leaguePotm: 0 };
+      }
+    }
+
+    // Appearances
+    lineup.forEach(pid => {
+      ensure(pid);
+      _state.playerStats[pid].apps++;
+      if (isVPL) _state.playerStats[pid].leagueApps++;
+    });
+
+    // Goals & assists
+    (events || []).filter(e => e.type === 'goal' && e.isValhalla).forEach(e => {
+      if (e.scorerId) {
+        ensure(e.scorerId);
+        _state.playerStats[e.scorerId].goals++;
+        if (isVPL) _state.playerStats[e.scorerId].leagueGoals++;
+      }
+      if (e.assistId) {
+        ensure(e.assistId);
+        _state.playerStats[e.assistId].assists++;
+        if (isVPL) _state.playerStats[e.assistId].leagueAssists++;
+      }
+    });
+
+    // Player of the Match
+    if (potm && potm.id) {
+      ensure(potm.id);
+      _state.playerStats[potm.id].potm++;
+      if (isVPL) _state.playerStats[potm.id].leaguePotm++;
+    }
   }
 
   // Mark competition as won
@@ -324,6 +373,6 @@ window.Game.State = (function () {
     return 'sacked'; // fallback if nothing else fits
   }
 
-  return { init, get, save, reset, applyEffects, applyRootEffects, recordResult, addCompetitionWin, evaluateEnding };
+  return { init, get, save, reset, applyEffects, applyRootEffects, recordResult, recordPlayerStats, addCompetitionWin, evaluateEnding };
 
 })();

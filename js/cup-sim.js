@@ -67,6 +67,23 @@ window.Game.CupSim = (function () {
     return Math.random() < p ? a.id : b.id;
   }
 
+  // Generate a plausible scoreline for a pre-simulated KO match
+  function genKOScore(hStr, aStr, homeId, winnerId) {
+    const homeWon = winnerId === homeId;
+    const diff = homeWon ? hStr - aStr : aStr - hStr;
+    const r = Math.random();
+    if (diff >= 10) {
+      const opts = homeWon ? [[3,0],[3,1],[4,0],[2,0]] : [[0,3],[1,3],[0,4],[0,2]];
+      return opts[Math.floor(r * opts.length)];
+    } else if (diff >= 3) {
+      const opts = homeWon ? [[2,0],[2,1],[1,0],[3,1]] : [[0,2],[1,2],[0,1],[1,3]];
+      return opts[Math.floor(r * opts.length)];
+    } else {
+      const opts = homeWon ? [[1,0],[2,1],[1,0]] : [[0,1],[1,2],[0,1]];
+      return opts[Math.floor(r * opts.length)];
+    }
+  }
+
   function simGroupGoals(a, b) {
     const pois = m => {
       let g = 0, p = Math.exp(-m), s = p, r = Math.random();
@@ -79,8 +96,11 @@ window.Game.CupSim = (function () {
   }
 
   function ko(hId, aId, getTeam, forceWinner) {
-    const w = forceWinner || simKO(getTeam(hId), getTeam(aId));
-    return { homeId: hId, awayId: aId, homeGoals: null, awayGoals: null, winnerId: w, isStory: false, played: true };
+    const ht = getTeam(hId);
+    const at = getTeam(aId);
+    const w = forceWinner || simKO(ht, at);
+    const [hg, ag] = genKOScore(ht.str || 75, at.str || 75, hId, w);
+    return { homeId: hId, awayId: aId, homeGoals: hg, awayGoals: ag, winnerId: w, isStory: false, played: true };
   }
 
   function story(hId, aId, sceneId) {
@@ -199,8 +219,7 @@ window.Game.CupSim = (function () {
 
     function simKOcwc(hId, aId, forceWinner) {
       const r = ko(hId, aId, cwt, forceWinner);
-      // played: false — revealed round-by-round
-      r.played = false;
+      r.played = false; // revealed round-by-round
       return r;
     }
 
@@ -386,6 +405,61 @@ window.Game.CupSim = (function () {
     return CWC_TEAMS.find(t => t.id === id) || { id, name: id, nation: '', flag: '' };
   }
 
-  return { simulateAll, injectResult, finalizeChampGroups, finalizeCWCRound, groupStandings, getTeamName, getCWCTeam, getPhaseLabel, FA_TEAMS, CHAMP_TEAMS, CWC_TEAMS };
+  // ── Between-match cup results ─────────────────────────────────
+  // Returns the other teams' results to show before a Valhalla cup scene,
+  // or null if there's nothing to reveal at this point.
+
+  function getBetweenResults(sceneId, cups) {
+    if (!cups) return null;
+    const fa = cups.fa.rounds;
+    const ch = cups.champ;
+    const wo = cups.world;
+
+    switch (sceneId) {
+
+      case 'fa_cup_qf':
+        return { competition: 'FA Cup', roundLabel: 'Round 1 Results',
+                 matches: fa.R1.filter(m => !m.isStory) };
+
+      case 'fa_cup_sf':
+        return { competition: 'FA Cup', roundLabel: 'Quarter-Final Results',
+                 matches: fa.QF.filter(m => !m.isStory) };
+
+      case 'fa_cup_final':
+        return { competition: 'FA Cup', roundLabel: 'Semi-Final Results',
+                 matches: fa.SF.filter(m => !m.isStory) };
+
+      case 'champions_ko': {
+        // After group stage — show Group B standings and key qualifier info
+        const grpBIds = ['real_estrada', 'dynamo_vostok', 'atlas_fc', 'porto_negro'];
+        return { competition: 'Champions Cup', roundLabel: 'Group Stage Complete',
+                 matches: ch.groupB.filter(m => m.played),
+                 groupMode: true,
+                 groupBIds,
+                 groupBFixtures: ch.groupB };
+      }
+
+      case 'champions_final':
+        return { competition: 'Champions Cup', roundLabel: 'Semi-Final Results',
+                 matches: ch.KO.filter(m => !m.isStory && m.played) };
+
+      case 'cwc_qf':
+        return { competition: 'Club World Cup', roundLabel: 'Round of 16 Results',
+                 matches: (wo.R16 || []).filter(m => !m.isStory && m.played), isCWC: true };
+
+      case 'cwc_sf':
+        return { competition: 'Club World Cup', roundLabel: 'Quarter-Final Results',
+                 matches: (wo.QF || []).filter(m => !m.isStory && m.played), isCWC: true };
+
+      case 'cwc_final':
+        return { competition: 'Club World Cup', roundLabel: 'Semi-Final Results',
+                 matches: (wo.SF || []).filter(m => !m.isStory && m.played), isCWC: true };
+
+      default:
+        return null;
+    }
+  }
+
+  return { simulateAll, injectResult, finalizeChampGroups, finalizeCWCRound, groupStandings, getTeamName, getCWCTeam, getPhaseLabel, getBetweenResults, FA_TEAMS, CHAMP_TEAMS, CWC_TEAMS };
 
 })();

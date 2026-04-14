@@ -105,8 +105,16 @@ window.Game.Screens.Hub = (function () {
 
     const onTable = () => window.Game.Screens.League.render(() => Engine.showHub());
 
+    // Always compute league position live from the actual table
+    let livePosition = r.vplPosition;
+    if (state.league && state.league.fixtures && state.league.round > 0) {
+      const liveTable = window.Game.LeagueSim.computeTable(state.league.fixtures, state.league.round);
+      const liveIdx = liveTable.findIndex(row => row.id === 'valhalla');
+      if (liveIdx >= 0) livePosition = liveIdx + 1;
+    }
+
     const standingRows = [
-      ['League Position', (r.vplWins + r.vplDraws + r.vplLosses === 0) ? '—' : Utils.ordinal(r.vplPosition) + ' of 18'],
+      ['League Position', (r.vplWins + r.vplDraws + r.vplLosses === 0) ? '—' : Utils.ordinal(livePosition) + ' of 18'],
       ['Record', `${r.vplWins}W ${r.vplDraws}D ${r.vplLosses}L`],
       ['Budget', Utils.formatMoney(state.budget)],
       ['Formation', state.formation],
@@ -175,18 +183,26 @@ window.Game.Screens.Hub = (function () {
       standingCard.appendChild(row);
     });
 
-    // Last results
+    // Last results (up to 10)
     if (r.lastResults.length > 0) {
+      const formWrap = document.createElement('div');
+      formWrap.style.marginTop = '8px';
+
+      const formLabel = document.createElement('div');
+      formLabel.style.cssText = 'font-size:10px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:4px;';
+      formLabel.textContent = `Last ${r.lastResults.length} game${r.lastResults.length !== 1 ? 's' : ''}`;
+      formWrap.appendChild(formLabel);
+
       const resultsRow = document.createElement('div');
       resultsRow.className = 'hub-result-row';
-      resultsRow.style.marginTop = '6px';
       r.lastResults.forEach(res => {
         const badge = document.createElement('span');
         badge.className = `badge badge-${res === 'W' ? 'win' : res === 'D' ? 'draw' : 'loss'}`;
         badge.textContent = res;
         resultsRow.appendChild(badge);
       });
-      standingCard.appendChild(resultsRow);
+      formWrap.appendChild(resultsRow);
+      standingCard.appendChild(formWrap);
     }
 
     body.appendChild(standingCard);

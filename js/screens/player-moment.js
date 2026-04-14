@@ -174,9 +174,9 @@ window.Game.Screens.PlayerMoment = (function () {
     screen.className = 'screen-player-moment screen-enter';
     screen.style.setProperty('--char-color', char.color || '#f5c842');
 
-    // Tap hint at top
+    // Tap hint — centred at top
     const hint = document.createElement('div');
-    hint.className = 'transition-hint';
+    hint.className = 'scene-tap-hint';
     hint.textContent = 'tap anywhere to continue';
     screen.appendChild(hint);
 

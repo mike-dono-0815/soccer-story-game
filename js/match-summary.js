@@ -479,8 +479,12 @@ window.Game.MatchSummary = (function () {
 
   function generateEvents(scene, result, state, rng) {
     const isHome = scene.homeAway === 'home';
-    const vG = isHome ? result.homeGoals : result.awayGoals;
-    const oG = isHome ? result.awayGoals : result.homeGoals;
+    // For AET: generate 90-min events from ninetyGoals; AET winner goal added below
+    const base90 = (result.method === 'aet' && result.ninetyGoals)
+      ? result.ninetyGoals
+      : { home: result.homeGoals, away: result.awayGoals };
+    const vG = isHome ? base90.home : base90.away;
+    const oG = isHome ? base90.away : base90.home;
     const opponent = scene.opponent || 'the opponents';
 
     // Active lineup players
@@ -573,6 +577,46 @@ window.Game.MatchSummary = (function () {
       events.push(ev);
     }
 
+    // ── AET goal: winner scores in extra time ─────────────────────
+    if (result.method === 'aet') {
+      const aetMin = 91 + Math.floor(rng() * 30); // 91'–120'
+      const valhallaScoresAET = result.outcome === 'win';
+      if (valhallaScoresAET) {
+        const scorer = wPick(starters, GOAL_W, rng, null);
+        const type = goalType(scorer, aetMin, rng);
+        vScore++;
+        const hS = isHome ? vScore : oScore, aS = isHome ? oScore : vScore;
+        events.push({
+          type: 'goal', minute: aetMin, isValhalla: true, isAET: true,
+          scorer: scorer.name, scorerShort: scorer.name.split(' ').pop(), scorerId: scorer.id,
+          assist: null, assistShort: null, assistId: null,
+          goalType: type, significance: 'go_ahead',
+          homeScore: hS, awayScore: aS, scoreStr: `${hS}–${aS}`,
+        });
+      } else {
+        const sName = oppPool[oppIdx++ % oppPool.length];
+        oScore++;
+        const hS = isHome ? vScore : oScore, aS = isHome ? oScore : vScore;
+        events.push({
+          type: 'goal', minute: aetMin, isValhalla: false, isAET: true,
+          scorer: sName, scorerShort: sName, assist: null, assistShort: null,
+          goalType: 'clinical', significance: 'they_go_ahead',
+          homeScore: hS, awayScore: aS, scoreStr: `${hS}–${aS}`,
+        });
+      }
+    }
+
+    // ── Penalty shootout marker ───────────────────────────────────
+    if (result.method === 'penalties' && result.penScore) {
+      const ps = result.penScore;
+      events.push({
+        type: 'penalties', minute: 121,
+        isValhalla: result.outcome === 'win',
+        penHome: ps.home, penAway: ps.away,
+        text: `Penalty shootout — ${ps.home}–${ps.away}`,
+      });
+    }
+
     return events.sort((a, b) => a.minute - b.minute);
   }
 
@@ -607,6 +651,33 @@ window.Game.MatchSummary = (function () {
 
     // Closing sentence
     paras.push(pick(CLOSINGS[arc] || CLOSINGS.narrow_win, rng));
+
+    // AET / penalty extra paragraph
+    if (result.method === 'aet') {
+      const pool = result.outcome === 'win' ? [
+        "The decisive moment arrived in extra time — exhausting, nervy, but ultimately Valhalla's.",
+        "One goal in extra time settled what ninety minutes could not. A single moment of quality proved the difference.",
+        "Extra time. One chance. One goal. Valhalla had the belief when it mattered most.",
+        "The winner came after the whistle — in extra time — and the relief was immense.",
+      ] : [
+        "The blow came in extra time, and it was final. After everything, a goal in the 120 settled it against Valhalla.",
+        "After ninety minutes of parity, extra time delivered a verdict no one in the Valhalla camp wanted.",
+        "So close to so much more — but a goal in extra time ended it. Devastating.",
+      ];
+      paras.push(pick(pool, rng));
+    } else if (result.method === 'penalties' && result.penScore) {
+      const ps = result.penScore;
+      const pool = result.outcome === 'win' ? [
+        `Penalties. The cruellest format — and Valhalla held their nerve, winning ${ps.home}–${ps.away} from the spot.`,
+        `After 120 goalless minutes in the shootout, Valhalla were clinical. ${ps.home}–${ps.away} on penalties.`,
+        `The shootout produced drama in every kick — but Valhalla were the side left standing. ${ps.home}–${ps.away} on spot-kicks.`,
+      ] : [
+        `After 120 minutes it came down to penalties — and they went against Valhalla. ${ps.home}–${ps.away}. An exit that will take time to accept.`,
+        `Eliminated on spot-kicks. Valhalla gave everything for 120 minutes, but penalties have no sympathy. ${ps.home}–${ps.away}.`,
+        `The cruelest exit in football. Penalties decided it — ${ps.home}–${ps.away} — and Valhalla are out.`,
+      ];
+      paras.push(pick(pool, rng));
+    }
 
     return paras;
   }
@@ -647,29 +718,49 @@ window.Game.MatchSummary = (function () {
 
   // ── Player of the Match ───────────────────────────────────────
 
-  function pickPotm(events, starters, result, rng) {
+  function pickPotm(events, starters, result, scene, rng) {
     if (!starters || starters.length === 0) return null;
+    const opponentName = scene.opponent || 'Opponent';
+    const isHome = scene.homeAway === 'home';
+    const vG = isHome ? result.homeGoals : result.awayGoals;
+
     const vGoals = events.filter(e => e.type === 'goal' && e.isValhalla);
+    const oGoals = events.filter(e => e.type === 'goal' && !e.isValhalla);
 
-    // Score each starter: goals × 3 + assists × 1 + rating bonus
-    const scores = {};
-    starters.forEach(p => { scores[p.id] = p.rating * 0.01; }); // tiny rating tiebreak
+    // ── Score Valhalla starters ──────────────────────────────────
+    const vScores = {};
+    starters.forEach(p => { vScores[p.id] = p.rating * 0.01; }); // tiny rating tiebreak
     vGoals.forEach(e => {
-      if (scores[e.scorerId] !== undefined) scores[e.scorerId] += 3;
-      if (e.assistId && scores[e.assistId] !== undefined) scores[e.assistId] += 1;
+      if (vScores[e.scorerId] !== undefined) vScores[e.scorerId] += 3;
+      if (e.assistId && vScores[e.assistId] !== undefined) vScores[e.assistId] += 1;
     });
-
-    // In a clean sheet / win, boost defenders and keeper slightly
-    const isHome = result.outcome !== undefined;
-    if (result.outcome === 'win' && vGoals.length === 0) {
+    // Clean-sheet win: boost defensive players
+    if (result.outcome === 'win' && vG === 0) {
       starters.forEach(p => {
-        if (['GK','CB','RB','LB','RWB','LWB'].includes(p.position)) scores[p.id] += 1.5;
+        if (['GK','CB','RB','LB','RWB','LWB'].includes(p.position)) vScores[p.id] += 1.5;
       });
     }
+    let bestV = starters[0];
+    starters.forEach(p => { if (vScores[p.id] > vScores[bestV.id]) bestV = p; });
+    const bestVScore = vScores[bestV.id];
 
-    let best = starters[0];
-    starters.forEach(p => { if (scores[p.id] > scores[best.id]) best = p; });
-    return best;
+    // ── Score opponent scorers ───────────────────────────────────
+    const oScores = {};
+    oGoals.forEach(e => { oScores[e.scorer] = (oScores[e.scorer] || 0) + 3; });
+    // In a loss, opponent deserves an extra point (overall dominance)
+    if (result.outcome === 'loss') {
+      Object.keys(oScores).forEach(n => { oScores[n] += 1; });
+    }
+    let bestOName = null, bestOScore = 0;
+    Object.entries(oScores).forEach(([name, score]) => {
+      if (score > bestOScore) { bestOScore = score; bestOName = name; }
+    });
+
+    // ── Pick winner ──────────────────────────────────────────────
+    if (bestOName && bestOScore > bestVScore) {
+      return { name: bestOName, team: opponentName, isOpponent: true };
+    }
+    return { ...bestV, team: 'FC Valhalla' };
   }
 
   // ── Key Player Moment Detection ───────────────────────────────
@@ -725,15 +816,19 @@ window.Game.MatchSummary = (function () {
     const isHome  = scene.homeAway === 'home';
     const vG      = isHome ? result.homeGoals : result.awayGoals;
     const oG      = isHome ? result.awayGoals : result.homeGoals;
-    const firstGoal = events.find(e => e.type === 'goal');
-    const arc     = selectArc(vG, oG, firstGoal ? firstGoal.isValhalla : true);
+    const firstGoal = events.find(e => e.type === 'goal' && !e.isAET);
+    let arc = selectArc(vG, oG, firstGoal ? firstGoal.isValhalla : true);
+    // Penalty results: 90-min score is a draw but outcome is win/loss — fix arc
+    if (result.method === 'penalties') {
+      arc = result.outcome === 'win' ? 'narrow_win' : 'defeat';
+    }
 
     const proseParts = buildProse(events, arc, scene, result, rng);
 
     const starters = state.lineup
       .map(id => state.squad.find(p => p.id === id))
       .filter(Boolean);
-    const potm       = pickPotm(events, starters, result, rng);
+    const potm       = pickPotm(events, starters, result, scene, rng);
     const keyMoment  = detectKeyMoment(events, potm, result, state);
 
     return { events, arc, proseParts, potm, keyMoment };

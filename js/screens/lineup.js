@@ -269,6 +269,8 @@ window.Game.Screens.Lineup = (function () {
       return card;
     }
 
+    const GROUP_LABELS = { FWD: 'Attackers', MID: 'Midfielders', DEF: 'Defenders', GK: 'Goalkeepers' };
+
     function refreshSquadCards() {
       squadList.innerHTML = '';
       const sorted = sortedSquad(state.squad, slottedLineup, state.story.prodigyOnSquad);
@@ -278,6 +280,7 @@ window.Game.Screens.Lineup = (function () {
         if (lastGroup !== null && lastGroup !== group) {
           const divider = document.createElement('div');
           divider.className = 'squad-group-divider';
+          divider.textContent = GROUP_LABELS[group] || group;
           squadList.appendChild(divider);
         }
         squadList.appendChild(buildSquadCard(player));
@@ -328,25 +331,33 @@ window.Game.Screens.Lineup = (function () {
 
       drag = { playerId, sourceSlotIdx, ghost, startX: e.clientX, startY: e.clientY, moved: false };
 
+      const SNAP_RADIUS = 80; // px — snap to nearest slot within this distance
+
+      function nearestSlot(x, y) {
+        let best = null, bestDist = SNAP_RADIUS;
+        pitchEl.querySelectorAll('.lineup-position-slot').forEach(slotEl => {
+          const r = slotEl.getBoundingClientRect();
+          const dist = Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2));
+          if (dist < bestDist) { bestDist = dist; best = slotEl; }
+        });
+        return best;
+      }
+
       function onMove(ev) {
         if (!drag) return;
         if (!drag.moved) {
           const dx = ev.clientX - drag.startX, dy = ev.clientY - drag.startY;
           if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
           drag.moved = true;
-          // Highlight all slots as potential drop targets
           pitchEl.querySelectorAll('.lineup-position-slot').forEach(s => s.classList.add('drag-available'));
         }
         drag.ghost.style.left = ev.clientX + 'px';
         drag.ghost.style.top  = ev.clientY + 'px';
 
-        // Highlight slot under pointer
-        drag.ghost.style.visibility = 'hidden';
-        const under = document.elementFromPoint(ev.clientX, ev.clientY);
-        drag.ghost.style.visibility = '';
+        // Highlight nearest slot within snap radius
         pitchEl.querySelectorAll('.lineup-position-slot.drag-hover').forEach(s => s.classList.remove('drag-hover'));
-        const targetSlot = under?.closest('.lineup-position-slot');
-        if (targetSlot) targetSlot.classList.add('drag-hover');
+        const snap = nearestSlot(ev.clientX, ev.clientY);
+        if (snap) snap.classList.add('drag-hover');
       }
 
       function onUp(ev) {
@@ -366,17 +377,14 @@ window.Game.Screens.Lineup = (function () {
         });
 
         if (!wasMoved) {
-          // Treat as click
           if (src !== null) onSlotClick(src);
           else onCardClick(pid);
           return;
         }
 
-        // Find drop target
-        ghost.style.visibility = 'hidden'; // already removed but guard
-        const under = document.elementFromPoint(ev.clientX, ev.clientY);
-        const targetSlotEl = under?.closest('.lineup-position-slot');
-        const targetIdx = targetSlotEl ? parseInt(targetSlotEl.dataset.slotIndex) : -1;
+        // Snap to nearest slot within radius
+        const snapSlot = nearestSlot(ev.clientX, ev.clientY);
+        const targetIdx = snapSlot ? parseInt(snapSlot.dataset.slotIndex) : -1;
 
         if (targetIdx >= 0) {
           const existing = slottedLineup[targetIdx];
@@ -390,7 +398,7 @@ window.Game.Screens.Lineup = (function () {
             if (oldIdx >= 0) slottedLineup[oldIdx] = existing;
           }
         }
-        // Drop outside a slot: no-op (don't remove from lineup)
+        // Drop outside snap radius: no-op
 
         refreshAll();
       }
@@ -430,7 +438,7 @@ window.Game.Screens.Lineup = (function () {
     [
       { group: 'fwd', top: '0%',   height: '30%' },
       { group: 'mid', top: '30%',  height: '27%' },
-      { group: 'def', top: '57%',  height: '23%' },
+      { group: 'def', top: '57%',  height: '21%' },
       { group: 'gk',  top: '78%',  height: '22%' },
     ].forEach(z => {
       const el = document.createElement('div');
