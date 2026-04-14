@@ -563,6 +563,7 @@ window.Game.StoryData = (function () {
       week: 4,
       calendarLabel: 'FA Cup Round 1',
       next: 'injury_event',
+      onLoss: 'fa_cup_out_r1',
     },
 
     injury_event: {
@@ -808,19 +809,19 @@ window.Game.StoryData = (function () {
           label: 'Offer a one-year extension.',
           hint: 'He stays. Morale boosts. The captain\'s role is secured.',
           effects: { teamMorale: +10, boardConfidence: -3, contractRenewed: true, fanReputation: +10 },
-          next: 'fa_cup_qf',
+          next: 'fa_cup_qf_check',
         },
         {
           label: 'Let him see out his contract.',
           hint: 'No commitment. Roberto accepts it, but something changes in him.',
           effects: { teamMorale: -8, boardConfidence: +3, fanReputation: -8 },
-          next: 'fa_cup_qf',
+          next: 'fa_cup_qf_check',
         },
         {
           label: 'Offer two years — all-in.',
           hint: 'Generous. Paulo isn\'t happy about the wages. But Roberto is emotional.',
           effects: { teamMorale: +15, boardConfidence: -8, mediaRep: +8, contractRenewed: true, fanReputation: +14 },
-          next: 'fa_cup_qf',
+          next: 'fa_cup_qf_check',
         },
       ],
     },
@@ -837,7 +838,8 @@ window.Game.StoryData = (function () {
       difficulty: 0.45,
       week: 9,
       calendarLabel: 'FA Cup Quarter Final',
-      next: 'callup_decision',
+      next: null,
+      onLoss: 'fa_cup_out_qf',
     },
 
     callup_decision: {
@@ -904,7 +906,7 @@ window.Game.StoryData = (function () {
       difficulty: 0.55,
       week: 10,
       calendarLabel: 'Champions Cup Group 2',
-      next: 'player_conflict',
+      next: null,
     },
 
     player_conflict: {
@@ -1119,19 +1121,19 @@ window.Game.StoryData = (function () {
       difficulty: 0.50,
       week: 17,
       calendarLabel: 'vs. Red Cliffs Athletic',
-      next: 'fa_cup_sf',
+      next: null,
     },
 
     fa_cup_sf: {
       id: 'fa_cup_sf', type: 'match', phase: 'cups',
       competition: 'FA Cup',
       opponent: 'Ironclad United',
-      homeAway: 'neutral',
       homeAway: 'away',
       difficulty: 0.58,
       week: 18,
       calendarLabel: 'FA Cup Semi-Final',
-      next: 'champions_ko',
+      next: null,
+      onLoss: 'fa_cup_out_sf',
     },
 
     champions_ko: {
@@ -1142,7 +1144,8 @@ window.Game.StoryData = (function () {
       difficulty: 0.62,
       week: 19,
       calendarLabel: 'Champions Cup QF',
-      next: 'locker_room_talk',
+      next: null,
+      onLoss: 'champ_out_ko',
     },
 
     locker_room_talk: {
@@ -1248,7 +1251,7 @@ window.Game.StoryData = (function () {
       isFinal: false,
       week: 24,
       calendarLabel: 'Title Decider vs. Castello',
-      next: 'fa_cup_final',
+      next: null,
     },
 
     fa_cup_final: {
@@ -1264,7 +1267,8 @@ window.Game.StoryData = (function () {
       isFinal: true,
       week: 26,
       calendarLabel: 'FA Cup Final',
-      next: 'champions_final',
+      next: null,
+      onLoss: 'fa_cup_out_final',
     },
 
     champions_final: {
@@ -1280,7 +1284,8 @@ window.Game.StoryData = (function () {
       isFinal: true,
       week: 28,
       calendarLabel: 'Champions Cup Final',
-      next: 'cwc_qualify_check',
+      next: null,
+      onLoss: 'champ_out_final',
     },
 
     // Gate: only proceed to CWC if league was won (vplPosition === 1)
@@ -1289,7 +1294,7 @@ window.Game.StoryData = (function () {
       type: 'gate',
       check: (state) => state.results.vplPosition === 1,
       ifTrue: 'cwc_r16',
-      ifFalse: 'season_end_eval',
+      ifFalse: 'season_summary',
     },
 
     cwc_r16: {
@@ -1304,7 +1309,8 @@ window.Game.StoryData = (function () {
       difficulty: 0.60,
       week: 30,
       calendarLabel: 'Club World Cup — Round of 16',
-      next: 'cwc_qf',
+      next: null,
+      onLoss: 'cwc_out_r16',
     },
 
     cwc_qf: {
@@ -1319,7 +1325,8 @@ window.Game.StoryData = (function () {
       difficulty: 0.64,
       week: 31,
       calendarLabel: 'Club World Cup — Quarter-Final',
-      next: 'cwc_sf',
+      next: null,
+      onLoss: 'cwc_out_qf',
     },
 
     cwc_sf: {
@@ -1334,7 +1341,8 @@ window.Game.StoryData = (function () {
       difficulty: 0.68,
       week: 32,
       calendarLabel: 'Club World Cup — Semi-Final',
-      next: 'cwc_final',
+      next: null,
+      onLoss: 'cwc_out_sf',
     },
 
     cwc_final: {
@@ -1350,16 +1358,193 @@ window.Game.StoryData = (function () {
       isFinal: true,
       week: 33,
       calendarLabel: 'Club World Cup Final',
-      next: 'season_end_eval',
+      next: null,
+      onLoss: 'cwc_out_final',
     },
 
     // ----------------------------------------------------------------
     // SEASON END — EVAL + ENDINGS
     // ----------------------------------------------------------------
 
+    season_summary: {
+      id: 'season_summary', type: 'season_summary',
+      calendarLabel: 'Season Review',
+      week: 34,
+    },
+
     season_end_eval: {
       id: 'season_end_eval', type: 'eval', // special type handled by engine
       next: null, // engine calls evaluateEnding()
+    },
+
+    // ----------------------------------------------------------------
+    // CUP QUALIFICATION GATES — inserted into spine
+    // ----------------------------------------------------------------
+
+    // FA Cup
+    fa_cup_qf_check: {
+      id: 'fa_cup_qf_check', type: 'gate',
+      check: (state) => state.results.cupRound === 'qf',
+      ifTrue: 'fa_cup_qf',
+      ifFalse: 'callup_decision',
+    },
+    fa_cup_sf_check: {
+      id: 'fa_cup_sf_check', type: 'gate',
+      check: (state) => state.results.cupRound === 'sf',
+      ifTrue: 'fa_cup_sf',
+      ifFalse: 'champions_ko_check',
+    },
+    fa_cup_final_check: {
+      id: 'fa_cup_final_check', type: 'gate',
+      check: (state) => state.results.cupRound === 'final',
+      ifTrue: 'fa_cup_final',
+      ifFalse: 'champions_final_check',
+    },
+
+    // Champions Cup
+    champ_group_check: {
+      id: 'champ_group_check', type: 'gate',
+      // Qualified if won at least one group game (championsRound = 'ko' or 'group')
+      check: (state) => state.results.championsRound === 'ko' || state.results.championsRound === 'group',
+      ifTrue: 'player_conflict',
+      ifFalse: 'champ_out_group',
+    },
+    champions_ko_check: {
+      id: 'champions_ko_check', type: 'gate',
+      check: (state) => state.results.championsRound === 'ko' || state.results.championsRound === 'group',
+      ifTrue: 'champions_ko',
+      ifFalse: 'locker_room_talk',
+    },
+    champions_final_check: {
+      id: 'champions_final_check', type: 'gate',
+      check: (state) => state.results.championsRound === 'final',
+      ifTrue: 'champions_final',
+      ifFalse: 'cwc_qualify_check',
+    },
+
+    // ----------------------------------------------------------------
+    // KNOCKOUT TRANSITION SCENES — shown when Valhalla is eliminated
+    // ----------------------------------------------------------------
+
+    fa_cup_out_r1: {
+      id: 'fa_cup_out_r1', type: 'knockout_transition',
+      competition: 'FA Cup', round: 'Round 1',
+      lines: [
+        "The FA Cup journey is over before it properly started.",
+        "Holbrook Rangers held their nerve. Valhalla go out in the first round.",
+        "It stings. The dressing room is quiet. But the season is far from over.",
+      ],
+      next: 'injury_event',
+    },
+
+    fa_cup_out_qf: {
+      id: 'fa_cup_out_qf', type: 'knockout_transition',
+      competition: 'FA Cup', round: 'Quarter-Final',
+      lines: [
+        "Willowbrook City end Valhalla's FA Cup dream at the last eight.",
+        "So close to the semi-final — and now it's over.",
+        "The focus shifts. The league and Europe remain. This isn't the end.",
+      ],
+      next: null, // Engine.next() → callup_decision in spine
+    },
+
+    fa_cup_out_sf: {
+      id: 'fa_cup_out_sf', type: 'knockout_transition',
+      competition: 'FA Cup', round: 'Semi-Final',
+      lines: [
+        "Ironclad United end the FA Cup run at the semi-final stage.",
+        "Wembley was within sight. Now it's gone.",
+        "Lena says nothing on the coach home. There's nothing to say.",
+      ],
+      next: null, // Engine.next() → champions_ko_check in spine
+    },
+
+    fa_cup_out_final: {
+      id: 'fa_cup_out_final', type: 'knockout_transition',
+      competition: 'FA Cup', round: 'Final',
+      lines: [
+        "The FA Cup Final ends in defeat. Runners-up.",
+        "You stood on the biggest domestic stage and fell short. It will define your thinking for years.",
+        "The trophy stays with Ironclad. The dressing room is devastated.",
+      ],
+      next: null, // Engine.next() → champions_final_check in spine
+    },
+
+    champ_out_group: {
+      id: 'champ_out_group', type: 'knockout_transition',
+      competition: 'Champions Cup', round: 'Group Stage',
+      lines: [
+        "Valhalla are eliminated from the Champions Cup at the group stage.",
+        "Europe's elite were unforgiving. The lessons are painful but real.",
+        "The continental chapter is closed — but the season still has so much to play for.",
+      ],
+      next: 'player_conflict',
+    },
+
+    champ_out_ko: {
+      id: 'champ_out_ko', type: 'knockout_transition',
+      competition: 'Champions Cup', round: 'Quarter-Final',
+      lines: [
+        "Real Estrada end the Champions Cup run. Out at the quarter-final stage.",
+        "A European campaign to be proud of — and a reminder of how much further there is to go.",
+        "The dressing room will take time to recover. The season run-in demands more.",
+      ],
+      next: 'locker_room_talk',
+    },
+
+    champ_out_final: {
+      id: 'champ_out_final', type: 'knockout_transition',
+      competition: 'Champions Cup', round: 'Final',
+      lines: [
+        "Dynamo Vostok win the Champions Cup Final. Valhalla finish as runners-up.",
+        "You took this club to a European final. Nobody saw it coming.",
+        "The trophy is theirs. The legacy is yours.",
+      ],
+      next: null, // Engine.next() → cwc_qualify_check in spine
+    },
+
+    cwc_out_r16: {
+      id: 'cwc_out_r16', type: 'knockout_transition',
+      competition: 'Club World Cup', round: 'Round of 16',
+      lines: [
+        "Santos Esmeralda eliminate Valhalla in the Round of 16.",
+        "The Club World Cup ends early. But reaching it at all was extraordinary.",
+        "The flight home is long and quiet.",
+      ],
+      next: 'season_summary',
+    },
+
+    cwc_out_qf: {
+      id: 'cwc_out_qf', type: 'knockout_transition',
+      competition: 'Club World Cup', round: 'Quarter-Final',
+      lines: [
+        "The Club World Cup quarter-final brings the run to an end.",
+        "Four clubs left in the world — Valhalla just fell short of that group.",
+        "It was a season that redefined what this club believes it can do.",
+      ],
+      next: 'season_summary',
+    },
+
+    cwc_out_sf: {
+      id: 'cwc_out_sf', type: 'knockout_transition',
+      competition: 'Club World Cup', round: 'Semi-Final',
+      lines: [
+        "The Club World Cup semi-final ends Valhalla's run. So close to the final.",
+        "Third place. Top three clubs on the planet.",
+        "Paulo Ferretti calls before the plane lands. He sounds like he's trying not to cry.",
+      ],
+      next: 'season_summary',
+    },
+
+    cwc_out_final: {
+      id: 'cwc_out_final', type: 'knockout_transition',
+      competition: 'Club World Cup', round: 'Final',
+      lines: [
+        "The Club World Cup Final. Valhalla gave everything. It wasn't enough.",
+        "Runners-up at the Club World Cup. The greatest season in the club's history.",
+        "The trophy is someone else's. The story belongs to Valhalla.",
+      ],
+      next: 'season_summary',
     },
 
     // ----------------------------------------------------------------
@@ -1451,7 +1636,7 @@ window.Game.StoryData = (function () {
     scenes.post_match_1,
     scenes.training_2,
     scenes.match_league_2,
-    scenes.fa_cup_r1,
+    scenes.fa_cup_r1,             // onLoss → fa_cup_out_r1 (off-spine)
     scenes.injury_event,
     scenes.board_pressure_1,
     scenes.match_league_3,
@@ -1462,10 +1647,12 @@ window.Game.StoryData = (function () {
     scenes.training_3,
     scenes.match_league_4,
     scenes.contract_decision,
-    scenes.fa_cup_qf,
+    scenes.fa_cup_qf_check,       // gate: qualified for QF?
+    scenes.fa_cup_qf,             // onLoss → fa_cup_out_qf (off-spine)
     scenes.callup_decision,
     scenes.rotation_decision,
     scenes.champions_group_2,
+    scenes.champ_group_check,     // gate: qualified from groups?
     scenes.player_conflict,
     scenes.mentorship_scene,
     scenes.media_crisis,
@@ -1474,19 +1661,24 @@ window.Game.StoryData = (function () {
     scenes.fan_event,
     scenes.staff_hiring,
     scenes.match_league_6,
-    scenes.fa_cup_sf,
-    scenes.champions_ko,
+    scenes.fa_cup_sf_check,       // gate: qualified for SF?
+    scenes.fa_cup_sf,             // onLoss → fa_cup_out_sf (off-spine)
+    scenes.champions_ko_check,    // gate: qualified for Champions KO?
+    scenes.champions_ko,          // onLoss → champ_out_ko (off-spine)
     scenes.locker_room_talk,
     scenes.second_half_review,
     scenes.paulo_final_meeting,
     scenes.match_title_decider,
-    scenes.fa_cup_final,
-    scenes.champions_final,
-    scenes.cwc_qualify_check,
-    scenes.cwc_r16,
-    scenes.cwc_qf,
-    scenes.cwc_sf,
-    scenes.cwc_final,
+    scenes.fa_cup_final_check,    // gate: qualified for FA Cup Final?
+    scenes.fa_cup_final,          // onLoss → fa_cup_out_final (off-spine)
+    scenes.champions_final_check, // gate: qualified for Champions Final?
+    scenes.champions_final,       // onLoss → champ_out_final (off-spine)
+    scenes.cwc_qualify_check,     // gate: league winner → CWC
+    scenes.cwc_r16,               // onLoss → cwc_out_r16 (off-spine)
+    scenes.cwc_qf,                // onLoss → cwc_out_qf (off-spine)
+    scenes.cwc_sf,                // onLoss → cwc_out_sf (off-spine)
+    scenes.cwc_final,             // onLoss → cwc_out_final (off-spine)
+    scenes.season_summary,
     scenes.season_end_eval,
   ];
 

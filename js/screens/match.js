@@ -92,7 +92,12 @@ window.Game.Screens.Match = (function () {
     const btn = document.createElement('button');
     btn.className = 'btn-primary';
     btn.textContent = 'Continue';
-    const advance = () => { if (scene.next) Engine.advance(scene.next); else Engine.next(); };
+    const advance = () => {
+      const nextId = (result.outcome === 'win' && scene.onWin)   ? scene.onWin
+                   : (result.outcome !== 'win' && scene.onLoss)  ? scene.onLoss
+                   : scene.next || null;
+      if (nextId) Engine.advance(nextId); else Engine.next();
+    };
     const onDone = () => {
       if (summary.keyMoment) {
         window.Game.Screens.PlayerMoment.show(summary.keyMoment, advance);

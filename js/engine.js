@@ -468,6 +468,16 @@ window.Game.Engine = (function () {
         advance(scene.check(State.get()) ? scene.ifTrue : scene.ifFalse);
         break;
 
+      case 'knockout_transition':
+        Screens.KnockoutTransition.show(scene, () => {
+          if (scene.next) advance(scene.next); else next();
+        });
+        break;
+
+      case 'season_summary':
+        Screens.SeasonSummary.show(State.get(), () => { next(); });
+        break;
+
       case 'eval':
         renderEnding(State.evaluateEnding());
         break;

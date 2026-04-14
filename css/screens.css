@@ -2873,3 +2873,257 @@
   border-left: 2px solid var(--accent-gold);
   background: rgba(245,200,66,0.05);
 }
+
+
+/* ============================================================
+   KNOCKOUT TRANSITION SCREEN
+   ============================================================ */
+
+.screen-knockout-transition {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 28px calc(40px + var(--safe-bottom));
+  background: linear-gradient(180deg, #0d0a0a 0%, #180c0c 50%, #0d0d0d 100%);
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+
+.kt-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+  filter: grayscale(0.4);
+}
+
+.kt-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.kt-round {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-red);
+  letter-spacing: 0.04em;
+  margin-bottom: 28px;
+}
+
+.kt-lines {
+  max-width: 320px;
+  margin: 0 auto 32px;
+}
+
+.kt-line {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.kt-line:last-child { margin-bottom: 0; }
+
+.kt-footer {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  padding: 12px 24px calc(var(--safe-bottom) + 12px);
+}
+
+
+/* ============================================================
+   SEASON SUMMARY SCREEN
+   ============================================================ */
+
+.screen-season-summary {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary, #0a0a12);
+  overflow: hidden;
+}
+
+.ss-header {
+  padding: 24px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(245,200,66,0.06) 0%, transparent 100%);
+}
+
+.ss-header-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.ss-header-sub {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.ss-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ss-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+}
+
+.ss-block-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+/* League position */
+
+.ss-position-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.ss-pos-num {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--accent-gold, #f5c842);
+  line-height: 1;
+}
+
+.ss-pos-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* W/D/L/Pts record */
+
+.ss-record-row {
+  display: flex;
+  gap: 8px;
+}
+
+.ss-record-cell {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.ss-record-num {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+
+.ss-record-num.win  { color: var(--accent-green); }
+.ss-record-num.draw { color: var(--text-dim); }
+.ss-record-num.loss { color: var(--accent-red); }
+.ss-record-num.pts  { color: var(--accent-gold, #f5c842); }
+
+.ss-record-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Cup rows */
+
+.ss-cup-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ss-cup-row:last-child { border-bottom: none; }
+
+.ss-cup-icon { font-size: 16px; width: 22px; text-align: center; }
+
+.ss-cup-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.ss-cup-result {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+
+.ss-cup-result.winner { color: var(--accent-gold, #f5c842); }
+.ss-cup-result.none   { color: var(--text-dim); opacity: 0.5; }
+
+/* Top scorers */
+
+.ss-scorer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.ss-scorer-row:last-child { border-bottom: none; }
+
+.ss-scorer-rank {
+  font-size: 11px;
+  color: var(--text-dim);
+  width: 16px;
+  flex-shrink: 0;
+}
+
+.ss-scorer-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ss-scorer-goals {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-gold, #f5c842);
+}
+
+.ss-footer {
+  padding: 12px 20px calc(var(--safe-bottom, 0px) + 12px);
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
