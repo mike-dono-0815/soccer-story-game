@@ -39,8 +39,12 @@ window.Game.Engine = (function () {
     overlay.appendChild(video);
     overlay.appendChild(skip);
 
-    const root = document.querySelector('.game-container') || document.getElementById('game-root');
-    root.appendChild(overlay);
+    const gameRoot = document.getElementById('game-root');
+    gameRoot.innerHTML = '';
+    const container = document.createElement('div');
+    container.className = 'game-container';
+    container.appendChild(overlay);
+    gameRoot.appendChild(container);
 
     let done = false;
     function finish() {
@@ -48,7 +52,7 @@ window.Game.Engine = (function () {
       done = true;
       overlay.classList.add('intro-fade-out');
       setTimeout(() => {
-        overlay.remove();
+        container.remove();
         onDone();
       }, 400);
     }
