@@ -113,6 +113,7 @@ window.Game.State = (function () {
       captainId: null,
       starSold: false,
       starInjured: false,
+      starTravelling: false,
       starRushedBack: false,
       rivalityEscalated: false,
       boardCrisisActive: false,
@@ -135,7 +136,9 @@ window.Game.State = (function () {
       conflictResolved: false,
       fanEventChoice: null,
       firstMatchWon: false,
+      midSeasonInvestment: null,  // 'attack' | 'defence' | 'youth'
     },
+    midSeasonTransferPool: null,  // initialised on first visit to transfer_window_2
   };
 
   let _state = null;
@@ -265,6 +268,14 @@ window.Game.State = (function () {
         s[key] = val;
       }
     });
+    // Releasing Marco for international duty marks him as travelling
+    if (effects.callupReleased === true) {
+      s.starTravelling = true;
+    }
+    // Selling Marco clears the travelling flag too
+    if (effects.starSold === true) {
+      s.starTravelling = false;
+    }
   }
 
   // Apply effects to top-level state (budget, lineup, formation, etc.)
@@ -329,9 +340,13 @@ window.Game.State = (function () {
       if (isGroupMatch) {
         // Group stage: qualification determined by standings after all 3 games — don't set round yet
         _state.results.championsResult = 'in_progress';
-        // Finalize all group fixtures (story + simulated) after the last group match
-        if (sceneId === 'champions_group_3' && _state.cups) {
-          window.Game.CupSim.finalizeChampGroups(_state.cups);
+        if (_state.cups) {
+          // Reveal companion matches for this matchday so all teams have equal games played
+          window.Game.CupSim.revealChampRound(_state.cups, sceneId);
+          // After the last group match, finalize any remaining fixtures as a catch-all
+          if (sceneId === 'champions_group_3') {
+            window.Game.CupSim.finalizeChampGroups(_state.cups);
+          }
         }
       } else if (outcome === 'win') {
         _state.results.championsResult = 'progress';

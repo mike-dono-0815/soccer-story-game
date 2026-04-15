@@ -157,10 +157,72 @@ window.Game.LeagueSim = (function () {
 
   // ─── Between-match simulation ──────────────────────────────
 
+  // Goal/assist weight by position (higher = more likely)
+  const GOAL_WEIGHT   = { GK:1, CB:3, LB:3, RB:3, DM:5, CM:10, LM:15, RM:15, LW:15, RW:15, CAM:20, ST:35, CF:35 };
+  const ASSIST_WEIGHT = { GK:0, CB:3, LB:5, RB:5, DM:8, CM:18, LM:18, RM:18, LW:18, RW:18, CAM:25, ST:8,  CF:8  };
+
+  function _weightedPick(players, weightMap, excludeId) {
+    const pool = excludeId ? players.filter(p => p.id !== excludeId) : players;
+    if (!pool.length) return null;
+    const total = pool.reduce((s, p) => s + (weightMap[p.position] || 5), 0);
+    let rand = Math.random() * total;
+    for (const p of pool) {
+      rand -= (weightMap[p.position] || 5);
+      if (rand <= 0) return p;
+    }
+    return pool[pool.length - 1];
+  }
+
+  // Simulate scorers, assists, and POTM for a Valhalla match.
+  // Returns { events: [{minute, scorerId, scorerName, assistId, assistName}], potm: {id,name} }
+  function simulateMatchEvents(valGoals, lineup, squad) {
+    const players = (lineup || []).map(id => (squad || []).find(p => p.id === id)).filter(Boolean);
+    if (!players.length || valGoals === 0) {
+      const potm = players.length ? players[Math.floor(Math.random() * players.length)] : null;
+      return { events: [], potm: potm ? { id: potm.id, name: potm.name } : null };
+    }
+
+    const goalCounts = {}, assistCounts = {};
+    const minutes = Array.from({ length: valGoals }, () => Math.floor(Math.random() * 90) + 1).sort((a, b) => a - b);
+    const events = [];
+
+    for (const minute of minutes) {
+      const scorer = _weightedPick(players, GOAL_WEIGHT, null);
+      if (!scorer) continue;
+      goalCounts[scorer.id] = (goalCounts[scorer.id] || 0) + 1;
+
+      let assister = null;
+      if (Math.random() > 0.15) {
+        assister = _weightedPick(players, ASSIST_WEIGHT, scorer.id);
+        if (assister) assistCounts[assister.id] = (assistCounts[assister.id] || 0) + 1;
+      }
+      const lastName = n => n.split(' ').pop();
+      events.push({
+        minute,
+        scorerId:   scorer.id,
+        scorerName: lastName(scorer.name),
+        assistId:   assister ? assister.id   : null,
+        assistName: assister ? lastName(assister.name) : null,
+      });
+    }
+
+    // POTM: highest weighted contribution (goals count double)
+    let potm = null, best = -1;
+    for (const p of players) {
+      const score = (goalCounts[p.id] || 0) * 2 + (assistCounts[p.id] || 0);
+      if (score > best || (score === best && score > 0 && Math.random() > 0.5)) {
+        best = score; potm = p;
+      }
+    }
+    if (!potm || best === 0) potm = players[Math.floor(Math.random() * players.length)];
+
+    return { events, potm: { id: potm.id, name: potm.name } };
+  }
+
   // Simulate Valhalla's matches for rounds fromRound..toRound (1-based, inclusive).
-  // Overwrites those fixture entries in-place using valhallaStrength (avg squad rating).
+  // squadInfo (optional): { squad, lineup } — if provided, generates scorer/assist/potm data.
   // Returns array of result summaries for the summary screen.
-  function simulateBetweenRounds(fixtures, fromRound, toRound, valhallaStrength) {
+  function simulateBetweenRounds(fixtures, fromRound, toRound, valhallaStrength, squadInfo) {
     const results = [];
     for (let r = fromRound; r <= toRound; r++) {
       const roundIdx = r - 1;
@@ -188,7 +250,15 @@ window.Game.LeagueSim = (function () {
       const oppGoals = isHome ? ag : hg;
       const outcome = valGoals > oppGoals ? 'win' : valGoals < oppGoals ? 'loss' : 'draw';
 
-      results.push({ round: r, opponent: opp.name, homeAway: isHome ? 'home' : 'away', outcome, valGoals, oppGoals });
+      const result = { round: r, opponent: opp.name, homeAway: isHome ? 'home' : 'away', outcome, valGoals, oppGoals };
+
+      if (squadInfo) {
+        const { events, potm } = simulateMatchEvents(valGoals, squadInfo.lineup, squadInfo.squad);
+        result.events = events;
+        result.potm   = potm;
+      }
+
+      results.push(result);
     }
     return results;
   }

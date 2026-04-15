@@ -159,6 +159,7 @@ window.Game.CupSim = (function () {
     const storyScenes = {
       'bayern_klauss|valhalla':   { sceneId: 'champions_group_1', homeId: 'bayern_klauss', awayId: 'valhalla' },
       'sporting_lisora|valhalla': { sceneId: 'champions_group_2', homeId: 'valhalla',      awayId: 'sporting_lisora' },
+      'fc_aurora|valhalla':       { sceneId: 'champions_group_3', homeId: 'fc_aurora',      awayId: 'valhalla' },
     };
 
     function buildGroup(teamIds) {
@@ -186,17 +187,7 @@ window.Game.CupSim = (function () {
     const groupA = buildGroup(groupA_ids);
     const groupB = buildGroup(groupB_ids);
 
-    // Force Valhalla's simulated match (vs Aurora) as a win — the two story
-    // matches vs Bayern and Sporting Lisora are what decide qualification.
-    const auroraMatch = groupA.find(m =>
-      !m.isStory && (m.homeId === 'valhalla' || m.awayId === 'valhalla')
-    );
-    if (auroraMatch) {
-      auroraMatch.homeGoals = auroraMatch.homeId === 'valhalla' ? 2 : 0;
-      auroraMatch.awayGoals = auroraMatch.homeId === 'valhalla' ? 0 : 2;
-      auroraMatch.winnerId  = 'valhalla';
-    }
-
+    // All three Valhalla group matches are story scenes now.
     // KO: Valhalla vs Real Estrada (story), Dynamo vs atlas (Dynamo forced win)
     const KO = [
       story('real_estrada', 'valhalla', 'champions_ko'),     // Valhalla away per story
@@ -375,9 +366,53 @@ window.Game.CupSim = (function () {
     return fVm.winnerId === 'valhalla' ? 'Club World Champions!' : 'Runners-up';
   }
 
+  // ── Reveal Champions Group matches round-by-round ─────────────
+  // Called after each story group match so every team has the same
+  // number of games played in the table.
+  //
+  // Matchday pairings (Group A):
+  //   MD1 champions_group_1 (V vs Bayern)  → Lisora vs Aurora
+  //   MD2 champions_group_2 (V vs Lisora)  → Bayern vs Aurora
+  //   MD3 champions_group_3 (V vs Aurora)  → Bayern vs Lisora
+  //
+  // Group B gets 2 fixtures revealed per matchday in a balanced schedule.
+
+  const _CHAMP_ROUND_REVEALS = {
+    champions_group_1: {
+      groupA: [['sporting_lisora', 'fc_aurora']],
+      groupB: [['real_estrada', 'dynamo_vostok'], ['atlas_fc', 'porto_negro']],
+    },
+    champions_group_2: {
+      groupA: [['bayern_klauss', 'fc_aurora']],
+      groupB: [['real_estrada', 'atlas_fc'], ['dynamo_vostok', 'porto_negro']],
+    },
+    champions_group_3: {
+      groupA: [['bayern_klauss', 'sporting_lisora']],
+      groupB: [['real_estrada', 'porto_negro'], ['dynamo_vostok', 'atlas_fc']],
+    },
+  };
+
+  function revealChampRound(cups, sceneId) {
+    if (!cups || !cups.champ) return;
+    const plan = _CHAMP_ROUND_REVEALS[sceneId];
+    if (!plan) return;
+    const ch = cups.champ;
+
+    function markPlayed(pool, ta, tb) {
+      const fix = pool.find(m =>
+        (m.homeId === ta && m.awayId === tb) ||
+        (m.homeId === tb && m.awayId === ta)
+      );
+      if (fix && !fix.isStory) fix.played = true;
+    }
+
+    (plan.groupA || []).forEach(([a, b]) => markPlayed(ch.groupA, a, b));
+    (plan.groupB || []).forEach(([a, b]) => markPlayed(ch.groupB, a, b));
+  }
+
   // ── Finalize Champions Group ──────────────────────────────────
-  // Called after the last story group match (champions_group_2) completes.
-  // Reveals all pre-simulated group matches that were held back.
+  // Catch-all: reveals any remaining pre-simulated group matches.
+  // Called after the last story group match completes.
 
   function finalizeChampGroups(cups) {
     if (!cups) return;
@@ -429,12 +464,22 @@ window.Game.CupSim = (function () {
         return { competition: 'FA Cup', roundLabel: 'Semi-Final Results',
                  matches: fa.SF.filter(m => !m.isStory) };
 
+      case 'champions_group_3': {
+        // Before the final group game — show Group A standings so far
+        const grpAIds = ['valhalla', 'bayern_klauss', 'sporting_lisora', 'fc_aurora'];
+        const playedSoFar = ch.groupA.filter(m => m.played);
+        if (playedSoFar.length === 0) return null;
+        return { competition: 'Champions Cup', roundLabel: 'Final Group Game',
+                 groupMode: true, groupLabel: 'Group A — Standings So Far',
+                 groupBIds: grpAIds, groupBFixtures: ch.groupA };
+      }
+
       case 'champions_ko': {
         // After group stage — show Group B standings and key qualifier info
         const grpBIds = ['real_estrada', 'dynamo_vostok', 'atlas_fc', 'porto_negro'];
         return { competition: 'Champions Cup', roundLabel: 'Group Stage Complete',
                  matches: ch.groupB.filter(m => m.played),
-                 groupMode: true,
+                 groupMode: true, groupLabel: 'Group B Final Standings',
                  groupBIds,
                  groupBFixtures: ch.groupB };
       }
@@ -460,6 +505,6 @@ window.Game.CupSim = (function () {
     }
   }
 
-  return { simulateAll, injectResult, finalizeChampGroups, finalizeCWCRound, groupStandings, getTeamName, getCWCTeam, getPhaseLabel, getBetweenResults, FA_TEAMS, CHAMP_TEAMS, CWC_TEAMS };
+  return { simulateAll, injectResult, revealChampRound, finalizeChampGroups, finalizeCWCRound, groupStandings, getTeamName, getCWCTeam, getPhaseLabel, getBetweenResults, FA_TEAMS, CHAMP_TEAMS, CWC_TEAMS };
 
 })();

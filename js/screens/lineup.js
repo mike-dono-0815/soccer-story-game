@@ -101,13 +101,22 @@ window.Game.Screens.Lineup = (function () {
 
   // ── Render ────────────────────────────────────────────────────
 
-  function render(nextSceneId) {
+  function render(nextSceneIdOrCallback) {
     const { State, Utils, Engine } = window.Game;
     const state = State.get();
 
     // Slot-indexed lineup: slottedLineup[i] = playerId or null
     let slottedLineup = Array.from({ length: 11 }, (_, i) => state.lineup[i] || null);
     let currentFormation = state.formation;
+
+    // Unavailable players (injured or travelling) cannot be in the starting 11
+    const injuredIds    = state.story.starInjured    ? ['star'] : [];
+    const travellingIds = state.story.starTravelling && !state.story.starSold ? ['star'] : [];
+    const unavailableIds = [...new Set([...injuredIds, ...travellingIds])];
+    unavailableIds.forEach(id => {
+      const idx = slottedLineup.indexOf(id);
+      if (idx >= 0) slottedLineup[idx] = null;
+    });
 
     const div = document.createElement('div');
     div.className = 'screen-lineup';
@@ -131,7 +140,7 @@ window.Game.Screens.Lineup = (function () {
     squadBtn.className = 'lineup-done-btn';
     squadBtn.style.cssText = 'background:var(--bg-card);color:var(--text-muted);border:1px solid var(--border-bright);margin-right:6px;';
     squadBtn.textContent = 'Squad';
-    const onSquad = () => window.Game.Screens.Squad.render(() => window.Game.Screens.Lineup.render(nextSceneId));
+    const onSquad = () => window.Game.Screens.Squad.render(() => window.Game.Screens.Lineup.render(nextSceneIdOrCallback));
     squadBtn.addEventListener('click', onSquad);
     squadBtn.addEventListener('touchend', e => { e.preventDefault(); onSquad(); }, { passive: false });
     header.appendChild(squadBtn);
@@ -143,8 +152,13 @@ window.Game.Screens.Lineup = (function () {
       state.lineup = slottedLineup.filter(Boolean);
       state.formation = currentFormation;
       State.save();
-      if (nextSceneId) Engine.advance(nextSceneId);
-      else Engine.next();
+      if (typeof nextSceneIdOrCallback === 'function') {
+        nextSceneIdOrCallback();
+      } else if (nextSceneIdOrCallback) {
+        Engine.advance(nextSceneIdOrCallback);
+      } else {
+        Engine.next();
+      }
     };
     doneBtn.addEventListener('click', onDone);
     doneBtn.addEventListener('touchend', e => { e.preventDefault(); onDone(); }, { passive: false });
@@ -193,16 +207,19 @@ window.Game.Screens.Lineup = (function () {
     }
 
     function buildSquadCard(player) {
-      const inSlot = slottedLineup.includes(player.id);
+      const isInjured    = injuredIds.includes(player.id);
+      const isTravelling = travellingIds.includes(player.id);
+      const isUnavailable = unavailableIds.includes(player.id);
+      const inSlot = !isUnavailable && slottedLineup.includes(player.id);
       const group  = playerGroup(player.position).toLowerCase();
       const card = document.createElement('div');
-      card.className = `player-card-small group-${group} ${inSlot ? 'starter' : ''}`;
+      card.className = `player-card-small group-${group} ${inSlot ? 'starter' : ''} ${isUnavailable ? 'injured' : ''}`;
       card.dataset.playerId = player.id;
-      card.style.touchAction = 'pan-y'; // allow vertical scroll by default
+      card.style.touchAction = 'pan-y';
 
       const numEl = document.createElement('div');
       numEl.className = `player-num ${inSlot ? 'starter' : ''}`;
-      numEl.textContent = inSlot ? '✓' : player.position;
+      numEl.textContent = isInjured ? '🤕' : isTravelling ? '✈️' : inSlot ? '✓' : player.position;
 
       const infoEl = document.createElement('div');
       infoEl.className = 'player-info';
@@ -211,7 +228,9 @@ window.Game.Screens.Lineup = (function () {
       nameEl.textContent = player.name;
       const posEl = document.createElement('div');
       posEl.className = 'player-pos';
-      posEl.textContent = `${player.position} · Age ${player.age}`;
+      posEl.textContent = isInjured    ? `${player.position} · Injured`
+                        : isTravelling ? `${player.position} · Travelling`
+                        : `${player.position} · Age ${player.age}`;
       infoEl.appendChild(nameEl);
       infoEl.appendChild(posEl);
 
@@ -222,6 +241,9 @@ window.Game.Screens.Lineup = (function () {
       card.appendChild(numEl);
       card.appendChild(infoEl);
       card.appendChild(ratingEl);
+
+      // Unavailable players: no interaction
+      if (isUnavailable) return card;
 
       // Long-press to drag (avoids clashing with list scroll).
       // Quick tap → toggle player in/out of lineup.
@@ -297,6 +319,7 @@ window.Game.Screens.Lineup = (function () {
     }
 
     function onCardClick(playerId) {
+      if (unavailableIds.includes(playerId)) return;
       const slotIdx = slottedLineup.indexOf(playerId);
       if (slotIdx >= 0) {
         // Remove from lineup

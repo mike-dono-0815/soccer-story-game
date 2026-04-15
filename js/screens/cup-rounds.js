@@ -55,7 +55,8 @@ window.Game.Screens.CupRounds = (function () {
   };
 
   function narrativeKey(data) {
-    const { competition, roundLabel, isCWC, groupMode } = data;
+    const { competition, roundLabel, isCWC, groupMode, groupLabel } = data;
+    if (groupMode && groupLabel && groupLabel.includes('Group A')) return 'champ_group';
     if (groupMode)                             return 'champ_group';
     if (isCWC && roundLabel.includes('16'))    return 'cwc_r16';
     if (isCWC && roundLabel.includes('Quarter')) return 'cwc_qf';
@@ -197,10 +198,10 @@ window.Game.Screens.CupRounds = (function () {
     content.className = 'cr-content';
 
     if (data.groupMode && data.groupBIds && data.groupBFixtures) {
-      // Champions Cup group stage: show Group B standings
+      // Champions Cup group stage: show standings
       const title = document.createElement('div');
       title.className = 'cr-section-title';
-      title.textContent = 'Group B Standings';
+      title.textContent = data.groupLabel || 'Group B Standings';
       content.appendChild(title);
       content.appendChild(buildGroupTable(data.groupBFixtures, data.groupBIds));
     } else {

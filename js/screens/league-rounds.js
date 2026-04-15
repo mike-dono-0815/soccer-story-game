@@ -116,6 +116,7 @@ window.Game.Screens.LeagueRounds = (function () {
     results.forEach(r => {
       const row = document.createElement('div');
       row.className = `lr-result-row ${r.outcome}`;
+      if (r.events) row.classList.add('lr-result-tappable');
 
       const badge = document.createElement('div');
       badge.className = `lr-result-badge ${r.outcome}`;
@@ -129,6 +130,13 @@ window.Game.Screens.LeagueRounds = (function () {
       opp.textContent = (r.homeAway === 'home' ? 'vs ' : '@ ') + r.opponent;
       info.appendChild(opp);
 
+      if (r.events) {
+        const tap = document.createElement('div');
+        tap.className = 'lr-result-tap-hint';
+        tap.textContent = 'Tap for details';
+        info.appendChild(tap);
+      }
+
       // Show as home score – away score (Valhalla perspective)
       const scoreEl = document.createElement('div');
       scoreEl.className = 'lr-result-score';
@@ -139,6 +147,16 @@ window.Game.Screens.LeagueRounds = (function () {
       row.appendChild(badge);
       row.appendChild(info);
       row.appendChild(scoreEl);
+
+      if (r.events) {
+        const onTap = e => {
+          e.stopPropagation();
+          showMatchDetail(r, screen);
+        };
+        row.addEventListener('click', onTap);
+        row.addEventListener('touchend', e => { e.preventDefault(); onTap(e); }, { passive: false });
+      }
+
       resultsList.appendChild(row);
     });
 
@@ -194,6 +212,131 @@ window.Game.Screens.LeagueRounds = (function () {
     screen.addEventListener('click', e => {
       if (e.target === screen || e.target === hint || e.target === resultsList) dismiss();
     });
+  }
+
+  function showMatchDetail(r, container) {
+    const existing = container.querySelector('.lr-detail-backdrop');
+    if (existing) existing.remove();
+
+    const isHome = r.homeAway === 'home';
+    const homeTeam = isHome ? 'FC Valhalla' : r.opponent;
+    const awayTeam = isHome ? r.opponent    : 'FC Valhalla';
+    const homeGoals = isHome ? r.valGoals : r.oppGoals;
+    const awayGoals = isHome ? r.oppGoals : r.valGoals;
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'lr-detail-backdrop';
+
+    const modal = document.createElement('div');
+    modal.className = 'lr-detail-modal';
+
+    // Header
+    const hdr = document.createElement('div');
+    hdr.className = 'lr-detail-header';
+
+    const roundBadge = document.createElement('div');
+    roundBadge.className = 'lr-detail-round';
+    roundBadge.textContent = `Round ${r.round} · VPL`;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'lr-detail-close';
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', e => { e.stopPropagation(); backdrop.remove(); });
+    closeBtn.addEventListener('touchend', e => { e.preventDefault(); e.stopPropagation(); backdrop.remove(); }, { passive: false });
+
+    hdr.appendChild(roundBadge);
+    hdr.appendChild(closeBtn);
+    modal.appendChild(hdr);
+
+    // Scoreline
+    const scoreRow = document.createElement('div');
+    scoreRow.className = 'lr-detail-score-row';
+
+    const homeEl = document.createElement('div');
+    homeEl.className = 'lr-detail-team' + (isHome ? ' lr-detail-team-us' : '');
+    homeEl.textContent = homeTeam;
+
+    const scoreEl = document.createElement('div');
+    scoreEl.className = `lr-detail-score ${r.outcome}`;
+    scoreEl.textContent = `${homeGoals} – ${awayGoals}`;
+
+    const awayEl = document.createElement('div');
+    awayEl.className = 'lr-detail-team' + (!isHome ? ' lr-detail-team-us' : '');
+    awayEl.textContent = awayTeam;
+
+    scoreRow.appendChild(homeEl);
+    scoreRow.appendChild(scoreEl);
+    scoreRow.appendChild(awayEl);
+    modal.appendChild(scoreRow);
+
+    // Goal events
+    if (r.events && r.events.length > 0) {
+      const divider = document.createElement('div');
+      divider.className = 'lr-detail-divider';
+      modal.appendChild(divider);
+
+      const eventsEl = document.createElement('div');
+      eventsEl.className = 'lr-detail-events';
+
+      r.events.forEach(ev => {
+        const evRow = document.createElement('div');
+        evRow.className = 'lr-detail-event';
+
+        const minuteEl = document.createElement('span');
+        minuteEl.className = 'lr-detail-minute';
+        minuteEl.textContent = `${ev.minute}'`;
+
+        const icon = document.createElement('span');
+        icon.className = 'lr-detail-icon';
+        icon.textContent = '⚽';
+
+        const text = document.createElement('span');
+        text.className = 'lr-detail-event-text';
+        text.textContent = ev.assistName
+          ? `${ev.scorerName} (${ev.assistName})`
+          : ev.scorerName;
+
+        evRow.appendChild(minuteEl);
+        evRow.appendChild(icon);
+        evRow.appendChild(text);
+        eventsEl.appendChild(evRow);
+      });
+
+      // Opposition goals (no scorer data)
+      if (r.oppGoals > 0) {
+        const oppDivider = document.createElement('div');
+        oppDivider.className = 'lr-detail-opp-label';
+        oppDivider.textContent = r.opponent;
+        eventsEl.appendChild(oppDivider);
+
+        for (let i = 0; i < r.oppGoals; i++) {
+          const evRow = document.createElement('div');
+          evRow.className = 'lr-detail-event lr-detail-event-opp';
+          evRow.innerHTML = `<span class="lr-detail-icon">⚽</span><span class="lr-detail-event-text">Goal</span>`;
+          eventsEl.appendChild(evRow);
+        }
+      }
+
+      modal.appendChild(eventsEl);
+    }
+
+    // POTM
+    if (r.potm) {
+      const potmDivider = document.createElement('div');
+      potmDivider.className = 'lr-detail-divider';
+      modal.appendChild(potmDivider);
+
+      const potmEl = document.createElement('div');
+      potmEl.className = 'lr-detail-potm';
+      potmEl.innerHTML = `<span class="lr-detail-potm-star">⭐</span><span class="lr-detail-potm-label">Player of the Match</span><span class="lr-detail-potm-name">${r.potm.name}</span>`;
+      modal.appendChild(potmEl);
+    }
+
+    backdrop.appendChild(modal);
+    container.appendChild(backdrop);
+
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove(); });
+    backdrop.addEventListener('touchend', e => { if (e.target === backdrop) { e.preventDefault(); backdrop.remove(); } }, { passive: false });
   }
 
   return { show };

@@ -35,8 +35,8 @@ window.Game.StoryData = (function () {
       },
       dialogue: [
         'Welcome to Valhalla, Gaffer. I\'m Lena — your assistant. I\'ve been here six years.',
-        'The training ground isn\'t much, but the squad has heart. We finished ninth last season.',
-        'The Chairman has... ambitions. He wants top four this year. I\'ll leave that conversation to him.',
+        'The training ground isn\'t much, but the squad has heart. We surprisingly finished fourth last season and qualified for the Champions Cup.',
+        'The Chairman has... ambitions. He wants top four again this year. I\'ll leave that conversation to him.',
         'Come on — let me show you around. There\'s someone you need to meet.',
       ],
       next: 'meet_paulo',
@@ -499,7 +499,7 @@ window.Game.StoryData = (function () {
         location: 'Post-Match Press Room',
         text: "The noise of the crowd is still ringing in your ears as you take the seat in front of the cameras. The press room is packed. Alexandra Chen from the Valorian Tribune has her recorder out and her eyes on you.",
       },
-      prompt: '"Gaffer, first game of the season — what\'s your honest assessment of the performance?"',
+      prompt: '"Gaffer, first games of the season — what\'s your honest assessment of the performance so far?"',
       calendarLabel: 'Post-Match Press',
       choices: [
         {
@@ -593,7 +593,7 @@ window.Game.StoryData = (function () {
       dialogue: [
         'Marco nods slowly when you tell him. "I get it, Gaffer. Sometimes you have to sit."',
         '"But I\'ll be back sharper. Watch."',
-        'Three weeks pass. When he returns, there\'s a new hunger in his eyes.',
+        'Three weeks will pass. When he is returning, there will be a new hunger in his eyes.',
       ],
       next: 'board_pressure_1',
     },
@@ -840,19 +840,16 @@ window.Game.StoryData = (function () {
           label: 'Release him. It\'s good for his career.',
           hint: 'Marco is grateful. But you face Ironclad without him.',
           effects: { starHappiness: +15, teamMorale: -5, callupReleased: true, fanReputation: +6 },
-          next: 'rotation_decision',
         },
         {
           label: 'Claim he\'s carrying a knock.',
           hint: 'Keeps him. The national team isn\'t happy. Marco says nothing but knows.',
           effects: { starHappiness: -10, mediaRep: -8, boardConfidence: +5, fanReputation: -8 },
-          next: 'rotation_decision',
         },
         {
           label: 'Release him after the Ironclad match only.',
           hint: 'A compromise. Both sides get something.',
           effects: { starHappiness: +5, teamMorale: +3, callupReleased: true },
-          next: 'rotation_decision',
         },
       ],
     },
@@ -861,26 +858,26 @@ window.Game.StoryData = (function () {
       id: 'rotation_decision', type: 'decision', phase: 'league',
       background: 'bg-training-ground',
       character: 'assistant', name: 'Lena Brandt',
-      prompt: '"Big week — four games in ten days. Do we push the first team, or rotate heavily?"',
+      prompt: '"We have a run of games coming up. Do we push the first team, or give some legs a rest?"',
       calendarLabel: 'Rotation vs. Performance',
       choices: [
         {
           label: 'Push the first team — full strength.',
           hint: 'Best chance of good results, but fatigue risk.',
-          effects: { teamMorale: -5, boardConfidence: +8 },
-          next: 'champions_group_2',
+          effects: { teamMorale: -3, boardConfidence: +5 },
+          strengthPenalty: 0,
         },
         {
           label: 'Rotate heavily.',
-          hint: 'Squad stays fresh. But some big names on the bench are unhappy.',
-          effects: { teamMorale: -3, starHappiness: -8, youthInvestment: +5 },
-          next: 'champions_group_2',
+          hint: 'Squad stays fresh. Results may dip slightly.',
+          effects: { teamMorale: -2, starHappiness: -5, youthInvestment: +5 },
+          strengthPenalty: 6,
         },
         {
           label: 'Selective rotation — protect key players only.',
-          hint: 'Balanced. Some morale cost, but manageable.',
+          hint: 'Balanced approach. Slight drop in sharpness.',
           effects: { teamMorale: +2 },
-          next: 'champions_group_2',
+          strengthPenalty: 3,
         },
       ],
     },
@@ -1036,20 +1033,20 @@ window.Game.StoryData = (function () {
         {
           label: 'Reject it. He\'s not for sale.',
           hint: 'Marco is relieved. Paulo is frustrated. The board notes it.',
-          effects: { starHappiness: +20, boardConfidence: -10, teamMorale: +8, fanReputation: +12 },
+          effects: { starHappiness: +20, boardConfidence: -10, teamMorale: +8, fanReputation: +12, starTravelling: false },
           next: 'mid_season_chairman',
         },
         {
           label: 'Accept — £14M is good business.',
           hint: 'Paulo is satisfied. The squad is shaken. Marco leaves with dignity.',
-          effects: { starSold: true, starHappiness: 0, teamMorale: -15, boardConfidence: +15, fanReputation: -20 },
+          effects: { starSold: true, starHappiness: 0, teamMorale: -15, boardConfidence: +15, fanReputation: -20, starTravelling: false },
           rootEffects: { budget: +14 },
           next: 'mid_season_chairman',
         },
         {
           label: 'Counter: £20M or nothing.',
           hint: 'They walk away. Marco stays — but he heard about the bid.',
-          effects: { starHappiness: -10, teamMorale: +3, boardConfidence: -3 },
+          effects: { starHappiness: -10, teamMorale: +3, boardConfidence: -3, starTravelling: false },
           next: 'mid_season_chairman',
         },
       ],
@@ -1069,21 +1066,21 @@ window.Game.StoryData = (function () {
         {
           label: 'Attack — we need goals to stay in the title race.',
           hint: 'Paulo nods. The board wants forward firepower.',
-          effects: { boardConfidence: +8, teamMorale: +5 },
+          effects: { boardConfidence: +8, teamMorale: +5, midSeasonInvestment: 'attack' },
           rootEffects: { budget: +5 },
           next: 'transfer_window_2',
         },
         {
           label: 'Defence — clean sheets win championships.',
           hint: 'Solid, pragmatic. The squad will feel more secure.',
-          effects: { teamMorale: +8, boardConfidence: +5 },
+          effects: { teamMorale: +8, boardConfidence: +5, midSeasonInvestment: 'defence' },
           rootEffects: { budget: +5 },
           next: 'transfer_window_2',
         },
         {
           label: 'Young talent — invest in the future.',
           hint: 'A longer play. Paulo raises an eyebrow, but lets it go.',
-          effects: { youthInvestment: +12, fanReputation: +8, boardConfidence: -3 },
+          effects: { youthInvestment: +12, fanReputation: +8, boardConfidence: -3, midSeasonInvestment: 'youth' },
           rootEffects: { budget: +5 },
           next: 'transfer_window_2',
         },
@@ -1694,10 +1691,10 @@ window.Game.StoryData = (function () {
     scenes.fa_cup_r1,             // onLoss → fa_cup_out_r1 (off-spine)
     scenes.injury_event,
     scenes.board_pressure_1,
-    scenes.match_league_3,
-    scenes.discipline_event,
     scenes.rivals_intro,
     scenes.rivals_response,
+    scenes.match_league_3,
+    scenes.discipline_event,
     scenes.champions_group_1,
     scenes.training_3,
     scenes.match_league_4,
@@ -1705,7 +1702,6 @@ window.Game.StoryData = (function () {
     scenes.fa_cup_qf_check,       // gate: qualified for QF?
     scenes.fa_cup_qf,             // onLoss → fa_cup_out_qf (off-spine)
     scenes.callup_decision,
-    scenes.rotation_decision,
     scenes.champions_group_2,
     scenes.champions_group_3,     // final group game vs FC Aurora
     scenes.champ_group_check,     // gate: top 2 in group → qualify

@@ -101,7 +101,10 @@ window.Game.Screens.Decision = (function () {
     }, animMs);
   }
 
-  function render(scene) {
+  let _onChoiceCb = null; // optional callback set per render call
+
+  function render(scene, onChoice) {
+    _onChoiceCb = onChoice || null;
     const { Characters, Utils, Engine } = window.Game;
     const char = Characters.get(scene.character || 'narrator');
 
@@ -233,6 +236,12 @@ window.Game.Screens.Decision = (function () {
           state.story.boardCrisisActive = true;
           State.save();
           Engine.advance('sacked_mid_season');
+          return;
+        }
+        if (_onChoiceCb) {
+          const cb = _onChoiceCb;
+          _onChoiceCb = null;
+          cb(choice);
           return;
         }
         const nextId = Engine.resolveNext(choice.next, choice.condition);

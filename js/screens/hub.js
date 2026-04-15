@@ -115,7 +115,6 @@ window.Game.Screens.Hub = (function () {
 
     const standingRows = [
       ['League Position', (r.vplWins + r.vplDraws + r.vplLosses === 0) ? '—' : Utils.ordinal(livePosition) + ' of 18'],
-      ['Record', `${r.vplWins}W ${r.vplDraws}D ${r.vplLosses}L`],
       ['Budget', Utils.formatMoney(state.budget)],
       ['Formation', state.formation],
     ];

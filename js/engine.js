@@ -294,11 +294,11 @@ window.Game.Engine = (function () {
     card.className = 'story-intro-card';
 
     const paragraphs = [
-      "It's a rainy Tuesday night. You and your mates are crammed into your usual corner of The Fox & Whistle, pints in hand, watching FC Valhalla stumble through another dismal first half.",
-      "\"He's clueless,\" you groan, jabbing a finger at the screen. \"I could do better with my eyes shut. The formation's wrong, the substitutions are wrong, the whole thing is a mess.\"",
-      "Your friends laugh. But the TV flickers. The picture warps. The noise of the pub melts away — and suddenly you're not in the pub anymore.",
-      "You're sitting in the FC Valhalla dugout. The roar of a packed stadium washes over you. A coach hands you a tactics board and looks at you expectantly.",
-      "Somehow, impossibly, you're the manager of FC Valhalla now.",
+      "It's a rainy Tuesday night. You and your buddies are crammed into your usual corner of The Beaver Pond, large beers in hand, watching FC Valhalla stumble through another weak first half.",
+      "\"He's clueless,\" you complain. \"I could do better with my eyes shut. The formation's wrong, the substitutions are wrong, the whole thing is a mess.\"",
+      "Suddenly, the TV flickers and the picture warps. The noise of the pub slowly melts away...",
+      "You're sitting at the bench of the FC Valhalla. The roar of a packed stadium washes over you. A coach hands you a tactics board and looks at you expectantly.",
+      "Strangely, you're the manager of FC Valhalla now.",
       "Time to show them you can do it better.",
     ];
 
@@ -311,7 +311,7 @@ window.Game.Engine = (function () {
 
     const btn = document.createElement('button');
     btn.className = 'btn-primary story-intro-btn';
-    btn.textContent = 'Take the Dugout';
+    btn.textContent = 'Start Your Journey';
     btn.addEventListener('click', () => {
       screen.classList.add('screen-exit');
       setTimeout(() => { div.remove(); showHub(); }, 350);
@@ -408,6 +408,17 @@ window.Game.Engine = (function () {
       renderEnding(State.evaluateEnding());
       return;
     }
+
+    // Auto-process gates without stopping at the hub
+    const nextEvent = events[state.progress.currentEventIndex];
+    if (nextEvent && nextEvent.type === 'gate') {
+      if (nextEvent.week !== undefined) state.progress.seasonWeek = nextEvent.week;
+      if (nextEvent.phase) state.progress.phase = nextEvent.phase;
+      State.save();
+      routeScene(nextEvent);
+      return;
+    }
+
     showHub();
   }
 
@@ -500,15 +511,6 @@ window.Game.Engine = (function () {
       }
     }
 
-    // For non-VPL (cup) matches: reveal other teams' results first
-    if (!isVPL && state.cups) {
-      const cupData = window.Game.CupSim.getBetweenResults(scene.id, state.cups);
-      if (cupData && (cupData.groupMode || (cupData.matches && cupData.matches.length > 0))) {
-        Screens.CupRounds.show(cupData, afterContext);
-        return;
-      }
-    }
-
     afterContext();
   }
 
@@ -518,20 +520,24 @@ window.Game.Engine = (function () {
   }
 
   // Simulate Valhalla's league rounds fromRound..toRound, update state, return results
-  function _runBetweenRoundSim(fromRound, toRound, state) {
+  // strengthPenalty: points subtracted from avg squad rating (rotation effect)
+  function _runBetweenRoundSim(fromRound, toRound, state, strengthPenalty) {
     const { clamp } = Utils;
     const { LeagueSim } = window.Game;
 
-    // Average rating of current starting lineup
+    // Average rating of current starting lineup, minus any rotation penalty
     const starters = state.lineup
       .map(id => state.squad.find(p => p.id === id))
       .filter(Boolean);
-    const avgStrength = starters.length > 0
-      ? starters.reduce((sum, p) => sum + p.rating, 0) / starters.length
-      : 76;
+    const avgStrength = Math.max(60,
+      (starters.length > 0
+        ? starters.reduce((sum, p) => sum + p.rating, 0) / starters.length
+        : 76) - (strengthPenalty || 0)
+    );
 
     const results = LeagueSim.simulateBetweenRounds(
-      state.league.fixtures, fromRound, toRound, avgStrength
+      state.league.fixtures, fromRound, toRound, avgStrength,
+      { squad: state.squad, lineup: state.lineup }
     );
 
     results.forEach(r => {
@@ -547,6 +553,15 @@ window.Game.Engine = (function () {
       const short = r.outcome === 'win' ? 'W' : r.outcome === 'draw' ? 'D' : 'L';
       state.results.lastResults.push(short);
       if (state.results.lastResults.length > 10) state.results.lastResults.shift();
+
+      // Record per-player stats for simulated matches
+      if (r.events) {
+        const fakeEvents = r.events.map(e => ({
+          type: 'goal', isValhalla: true,
+          scorerId: e.scorerId, assistId: e.assistId,
+        }));
+        State.recordPlayerStats(fakeEvents, r.potm, 'VPL', state.lineup);
+      }
     });
 
     state.league.round = Math.max(state.league.round, toRound);
@@ -560,28 +575,35 @@ window.Game.Engine = (function () {
     return results;
   }
 
-  // After a VPL story match completes: simulate the rounds until the next story match,
-  // show a transition + summary, then advance to the next scene.
+  // After a VPL story match completes: ask about rotation, then simulate
+  // the rounds until the next story match, show summary, advance.
   function _doPostVPLRounds(sceneId, nextId) {
     const state = State.get();
     const postRounds = window.Game.LeagueSim.getPostMatchRounds(sceneId);
 
     if (postRounds && postRounds.count > 0) {
-      const simResults = _runBetweenRoundSim(postRounds.from, postRounds.to, state);
-      if (simResults.length > 0) {
-        const count = postRounds.count;
-        const gameWord = count === 1 ? 'game' : 'games';
-        const transitionText = `The squad moves on — ${count} more VPL ${gameWord} to play before the next big match.`;
-        Screens.Transition.show(
-          { location: 'Valorian Premier League', text: transitionText },
-          () => {
-            Screens.LeagueRounds.show(simResults, () => {
-              if (nextId) advance(nextId); else next();
-            });
-          }
-        );
-        return;
-      }
+      // Ask the rotation question before running the sim
+      const rotScene = window.Game.StoryData.scenes.rotation_decision;
+      Screens.Decision.render(rotScene, function onRotationChoice(choice) {
+        const penalty = choice.strengthPenalty || 0;
+        const simResults = _runBetweenRoundSim(postRounds.from, postRounds.to, State.get(), penalty);
+        if (simResults.length > 0) {
+          const count = postRounds.count;
+          const gameWord = count === 1 ? 'game' : 'games';
+          const transitionText = `The squad moves on — ${count} more VPL ${gameWord} to play before the next big match.`;
+          Screens.Transition.show(
+            { location: 'Valorian Premier League', text: transitionText },
+            () => {
+              Screens.LeagueRounds.show(simResults, () => {
+                if (nextId) advance(nextId); else next();
+              });
+            }
+          );
+        } else {
+          if (nextId) advance(nextId); else next();
+        }
+      });
+      return;
     }
 
     if (nextId) advance(nextId); else next();
@@ -654,7 +676,7 @@ window.Game.Engine = (function () {
         Screens.Training.render(nextSceneId);
         break;
       case 'transfer':
-        Screens.Transfer.render(nextSceneId);
+        Screens.Transfer.render(nextSceneId, { isMidSeason: scene.id === 'transfer_window_2' });
         break;
       default:
         advance(nextSceneId);
