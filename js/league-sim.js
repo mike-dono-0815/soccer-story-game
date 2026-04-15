@@ -193,6 +193,20 @@ window.Game.LeagueSim = (function () {
     return results;
   }
 
-  return { TEAMS, SCENE_TO_ROUND, simulateSeason, computeTable, scoreFromOutcome, getRoundForScene, simulateBetweenRounds };
+  // ─── Post-match rounds ─────────────────────────────────────
+  // Returns the simulated rounds to run AFTER sceneId completes,
+  // i.e. from sceneId's round+1 up to the next story match's round-1.
+  function getPostMatchRounds(sceneId) {
+    const entries = Object.entries(SCENE_TO_ROUND).sort((a, b) => a[1] - b[1]);
+    const currentRound = SCENE_TO_ROUND[sceneId];
+    if (currentRound == null) return null;
+    const next = entries.find(([, r]) => r > currentRound);
+    if (!next) return null;
+    const nextRound = next[1];
+    if (nextRound <= currentRound + 1) return null;
+    return { from: currentRound + 1, to: nextRound - 1, count: nextRound - currentRound - 1 };
+  }
+
+  return { TEAMS, SCENE_TO_ROUND, simulateSeason, computeTable, scoreFromOutcome, getRoundForScene, simulateBetweenRounds, getPostMatchRounds };
 
 })();

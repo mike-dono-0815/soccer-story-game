@@ -39,7 +39,17 @@ window.Game.Screens.Scene = (function () {
     const portraitArea = document.createElement('div');
     portraitArea.className = 'scene-portrait-area';
 
-    if (scene.character && scene.character !== 'narrator') {
+    if (scene.image) {
+      // Scene-specific image (e.g. stadium, location art) shown like a sticker portrait
+      const wrap = document.createElement('div');
+      wrap.className = 'portrait-wrap portrait-image portrait-enter';
+      const img = document.createElement('img');
+      img.src = scene.image;
+      img.alt = '';
+      img.style.cssText = 'max-width:100%;max-height:100%;width:auto;height:auto;display:block;object-fit:contain;object-position:bottom center;';
+      wrap.appendChild(img);
+      portraitArea.appendChild(wrap);
+    } else if (scene.character && scene.character !== 'narrator') {
       const portrait = Characters.buildPortrait(scene.character, 'large');
       portrait.classList.add('portrait-enter');
       portraitArea.appendChild(portrait);

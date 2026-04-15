@@ -343,9 +343,41 @@ window.Game.Engine = (function () {
     return event.id.replace(/_/g, ' ');
   }
 
+  // Story match opponent name → VPL table team ID (only for teams that exist in the simulated league)
+  const OPP_TO_TEAM_ID = {
+    'Ironclad United':    'ironclad',
+    'Red Cliffs Athletic': 'redcliffs',
+    'Holbrook Rangers':   'holbrook',
+    'Northgate City':     'northgate',
+  };
+
+  function _oppLeaguePosition(opponentName) {
+    const teamId = OPP_TO_TEAM_ID[opponentName];
+    if (!teamId) return null;
+    const state = State.get();
+    if (!state.league || !state.league.fixtures || state.league.round < 1) return null;
+    const table = window.Game.LeagueSim.computeTable(state.league.fixtures, state.league.round);
+    const idx = table.findIndex(row => row.id === teamId);
+    return idx >= 0 ? idx + 1 : null;
+  }
+
   function getEventDetail(event) {
     if (event.type === 'match') {
-      return `${event.competition || 'VPL'} · ${event.homeAway === 'home' ? 'Home' : 'Away'}`;
+      const isVPL = !event.competition || event.competition === 'VPL';
+
+      if (isVPL) {
+        const round = window.Game.LeagueSim.SCENE_TO_ROUND[event.id];
+        const venue = event.homeAway === 'home' ? 'Home' : 'Away';
+        let detail = round ? `VPL · Round ${round} of 34 · ${venue}` : `VPL League · ${venue}`;
+        const pos = _oppLeaguePosition(event.opponent);
+        if (pos) detail += ` · Opponent currently ${window.Game.Utils.ordinal(pos)}`;
+        return detail;
+      }
+
+      // Cup / other competitions — show competition + venue
+      const comp = event.competition || 'VPL';
+      const venue = event.homeAway === 'home' ? 'Home' : event.homeAway === 'away' ? 'Away' : 'Neutral';
+      return `${comp} · ${venue}`;
     }
     if (event.type === 'decision') return 'Decision Required';
     if (event.type === 'minigame') return `${event.miniGameType || ''}`;
@@ -356,51 +388,49 @@ window.Game.Engine = (function () {
   function routeScene(scene) {
     if (!scene) return;
 
-    // Before VPL story matches, simulate any skipped league rounds
-    if (scene.type === 'match' && (scene.competition === 'VPL' || !scene.competition)) {
-      const targetRound = window.Game.LeagueSim.getRoundForScene(scene.id);
-      const state = State.get();
-      if (targetRound && targetRound > state.league.round + 1) {
-        const fromRound = state.league.round + 1;
-        const toRound   = targetRound - 1;
-        const simResults = _runBetweenRoundSim(fromRound, toRound, state);
-        if (simResults.length > 0) {
-          Screens.LeagueRounds.show(simResults, () => {
-            if (scene.transition) {
-              Screens.Transition.show(scene.transition, () => _doRouteScene(scene));
-            } else {
-              _doRouteScene(scene);
-            }
-          });
-          return;
-        }
-      }
+    // Match scenes: context screens → lineup → match
+    if (scene.type === 'match') {
+      _runMatchPipeline(scene);
+      return;
     }
 
-    // Before cup story matches, reveal the other teams' round results
-    if (scene.type === 'match' && scene.competition && scene.competition !== 'VPL') {
-      const state = State.get();
-      if (state.cups) {
-        const cupData = window.Game.CupSim.getBetweenResults(scene.id, state.cups);
-        if (cupData && (cupData.groupMode || (cupData.matches && cupData.matches.length > 0))) {
-          Screens.CupRounds.show(cupData, () => {
-            if (scene.transition) {
-              Screens.Transition.show(scene.transition, () => _doRouteScene(scene));
-            } else {
-              _doRouteScene(scene);
-            }
-          });
-          return;
-        }
-      }
-    }
-
-    // Show narrative transition card if the scene defines one
+    // Non-match: show transition if defined, then route
     if (scene.transition) {
       Screens.Transition.show(scene.transition, () => _doRouteScene(scene));
       return;
     }
     _doRouteScene(scene);
+  }
+
+  // Full pipeline for any match: [cup context] → [transition] → lineup → match
+  function _runMatchPipeline(scene) {
+    const state = State.get();
+    const isVPL = !scene.competition || scene.competition === 'VPL';
+
+    function afterContext() {
+      // Show narrative transition if the match scene defines one
+      if (scene.transition) {
+        Screens.Transition.show(scene.transition, () => _showLineupThenMatch(scene));
+      } else {
+        _showLineupThenMatch(scene);
+      }
+    }
+
+    // For non-VPL (cup) matches: reveal other teams' results first
+    if (!isVPL && state.cups) {
+      const cupData = window.Game.CupSim.getBetweenResults(scene.id, state.cups);
+      if (cupData && (cupData.groupMode || (cupData.matches && cupData.matches.length > 0))) {
+        Screens.CupRounds.show(cupData, afterContext);
+        return;
+      }
+    }
+
+    afterContext();
+  }
+
+  // Show lineup selection, then proceed to match rendering
+  function _showLineupThenMatch(scene) {
+    Screens.Lineup.render(() => _doRouteScene(scene));
   }
 
   // Simulate Valhalla's league rounds fromRound..toRound, update state, return results
@@ -446,6 +476,33 @@ window.Game.Engine = (function () {
     return results;
   }
 
+  // After a VPL story match completes: simulate the rounds until the next story match,
+  // show a transition + summary, then advance to the next scene.
+  function _doPostVPLRounds(sceneId, nextId) {
+    const state = State.get();
+    const postRounds = window.Game.LeagueSim.getPostMatchRounds(sceneId);
+
+    if (postRounds && postRounds.count > 0) {
+      const simResults = _runBetweenRoundSim(postRounds.from, postRounds.to, state);
+      if (simResults.length > 0) {
+        const count = postRounds.count;
+        const gameWord = count === 1 ? 'game' : 'games';
+        const transitionText = `The squad moves on — ${count} more VPL ${gameWord} to play before the next big match.`;
+        Screens.Transition.show(
+          { location: 'Valorian Premier League', text: transitionText },
+          () => {
+            Screens.LeagueRounds.show(simResults, () => {
+              if (nextId) advance(nextId); else next();
+            });
+          }
+        );
+        return;
+      }
+    }
+
+    if (nextId) advance(nextId); else next();
+  }
+
   function _doRouteScene(scene) {
     switch (scene.type) {
       case 'story':
@@ -456,9 +513,16 @@ window.Game.Engine = (function () {
         Screens.Decision.render(scene);
         break;
 
-      case 'match':
-        Screens.Match.render(scene);
+      case 'match': {
+        const isVPL = !scene.competition || scene.competition === 'VPL';
+        if (isVPL) {
+          // VPL matches: intercept advance to show post-match rounds summary
+          Screens.Match.render(scene, (nextId) => _doPostVPLRounds(scene.id, nextId));
+        } else {
+          Screens.Match.render(scene);
+        }
         break;
+      }
 
       case 'minigame':
         routeMiniGame(scene);

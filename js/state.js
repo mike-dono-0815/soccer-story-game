@@ -98,9 +98,9 @@ window.Game.State = (function () {
     transferPool: DEFAULT_TRANSFER_POOL,
     playerStats: {},  // { [playerId]: { apps, goals, assists, potm, leagueApps, leagueGoals, leagueAssists, leaguePotm } }
     story: {
-      teamMorale: 50,
+      teamMorale: 55,
       teamStrengthBonus: 0,
-      boardConfidence: 60,
+      boardConfidence: 65,
       mediaRep: 50,
       fanReputation: 50,
       starHappiness: 50,
@@ -258,15 +258,22 @@ window.Game.State = (function () {
       }
     }
     if (competition === 'Champions Cup') {
-      _state.results.championsResult = outcome === 'win' ? 'progress' : 'eliminated';
-      if (outcome === 'win') {
-        if (sceneId === 'champions_group_1') _state.results.championsRound = 'group';
-        else if (sceneId === 'champions_group_2') _state.results.championsRound = 'ko';
-        else if (sceneId === 'champions_ko')   _state.results.championsRound = 'final';
-        else if (sceneId === 'champions_final') _state.results.championsRound = 'winner';
+      const isGroupMatch = sceneId === 'champions_group_1' || sceneId === 'champions_group_2' || sceneId === 'champions_group_3';
+      if (isGroupMatch) {
+        // Group stage: qualification determined by standings after all 3 games — don't set round yet
+        _state.results.championsResult = 'in_progress';
+        // Finalize all group fixtures (story + simulated) after the last group match
+        if (sceneId === 'champions_group_3' && _state.cups) {
+          window.Game.CupSim.finalizeChampGroups(_state.cups);
+        }
+      } else if (outcome === 'win') {
+        _state.results.championsResult = 'progress';
+        if (sceneId === 'champions_ko')    _state.results.championsRound = 'final';
+        if (sceneId === 'champions_final') _state.results.championsRound = 'winner';
       } else {
-        const labels = { champions_group_1: 'Group', champions_group_2: 'Group', champions_ko: 'KO', champions_final: 'Final' };
-        _state.results.championsRound = 'out_' + (labels[sceneId] || 'Group');
+        _state.results.championsResult = 'eliminated';
+        const labels = { champions_ko: 'KO', champions_final: 'Final' };
+        _state.results.championsRound = 'out_' + (labels[sceneId] || 'KO');
       }
     }
     if (competition === 'Club World Cup') {
@@ -284,10 +291,6 @@ window.Game.State = (function () {
     // Inject result into cup bracket
     if (_state.cups) {
       window.Game.CupSim.injectResult(_state.cups, sceneId, outcome, homeGoals, awayGoals);
-      // After each Champions group story match, reveal all pre-simulated group fixtures
-      if (sceneId === 'champions_group_2') {
-        window.Game.CupSim.finalizeChampGroups(_state.cups);
-      }
       // After each CWC story match, reveal all other results for that round
       const cwcRoundMap = { cwc_r16: 'R16', cwc_qf: 'QF', cwc_sf: 'SF' };
       if (cwcRoundMap[sceneId]) {
@@ -296,7 +299,7 @@ window.Game.State = (function () {
     }
 
     // Morale effect
-    const moraleChange = outcome === 'win' ? 6 : outcome === 'draw' ? 2 : -8;
+    const moraleChange = outcome === 'win' ? 6 : outcome === 'draw' ? 2 : -6;
     _state.story.teamMorale = window.Game.Utils.clamp(_state.story.teamMorale + moraleChange, 0, 100);
     // Track last 5 results
     const short = outcome === 'win' ? 'W' : outcome === 'draw' ? 'D' : 'L';
@@ -365,11 +368,11 @@ window.Game.State = (function () {
     const winsVPL = r.competitionWins.includes('VPL');
     const winsCup = r.competitionWins.includes('FA Cup');
 
-    if (winsAll && s.boardConfidence >= 70) return 'glory';
-    if (winsVPL && !winsCup && s.boardConfidence >= 60) return 'league_champion';
-    if (winsCup && !winsVPL && s.teamMorale >= 60) return 'underdog_cup';
+    if (winsAll && s.boardConfidence >= 65) return 'glory';
+    if (winsVPL && !winsCup && s.boardConfidence >= 55) return 'league_champion';
+    if (winsCup && !winsVPL && s.teamMorale >= 55) return 'underdog_cup';
     if (s.prodigyPromoted && s.youthInvestment >= 60) return 'youth_revolution';
-    if (s.teamMorale >= 60) return 'legendary_failure';
+    if (s.teamMorale >= 55) return 'legendary_failure';
     return 'sacked'; // fallback if nothing else fits
   }
 

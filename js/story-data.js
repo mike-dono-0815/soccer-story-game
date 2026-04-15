@@ -406,13 +406,6 @@ window.Game.StoryData = (function () {
       id: 'training_1', type: 'minigame', phase: 'preseason',
       miniGameType: 'training',
       calendarLabel: 'First Training Week',
-      next: 'lineup_friendly',
-    },
-
-    lineup_friendly: {
-      id: 'lineup_friendly', type: 'minigame', phase: 'preseason',
-      miniGameType: 'lineup',
-      calendarLabel: 'Pick Lineup — Friendly',
       next: 'match_friendly',
     },
 
@@ -471,22 +464,16 @@ window.Game.StoryData = (function () {
       id: 'season_kickoff', type: 'story', phase: 'league',
       background: 'bg-stadium-dawn',
       character: 'narrator',
+      image: 'Stadium.png',
       dialogue: [
         'MATCHDAY ONE. The Valorian Premier League season begins.',
         'The Valhalla faithful pack Nordstrom Park. Sixty-two thousand voices, one heartbeat.',
         'You stand in the tunnel. The roar builds above you.',
         'This is it. Everything you\'ve worked for starts now.',
       ],
-      next: 'lineup_league_1',
+      next: 'match_league_1',
       calendarLabel: 'Season Begins',
       week: 1,
-    },
-
-    lineup_league_1: {
-      id: 'lineup_league_1', type: 'minigame', phase: 'league',
-      miniGameType: 'lineup',
-      calendarLabel: 'Pick Lineup — League',
-      next: 'match_league_1',
     },
 
     match_league_1: {
@@ -909,6 +896,21 @@ window.Game.StoryData = (function () {
       next: null,
     },
 
+    champions_group_3: {
+      id: 'champions_group_3', type: 'match', phase: 'cups',
+      competition: 'Champions Cup',
+      opponent: 'FC Aurora',
+      homeAway: 'away',
+      difficulty: 0.40,
+      week: 11,
+      calendarLabel: 'Champions Cup Group 3',
+      transition: {
+        location: 'Away — Champions Cup Group Stage',
+        text: "Final group game. FC Aurora haven't given up — a win here keeps their hopes alive. Everything still to play for. Your squad knows what's at stake.",
+      },
+      next: null,
+    },
+
     player_conflict: {
       id: 'player_conflict', type: 'decision', phase: 'league',
       background: 'bg-locker-room',
@@ -1035,22 +1037,68 @@ window.Game.StoryData = (function () {
           label: 'Reject it. He\'s not for sale.',
           hint: 'Marco is relieved. Paulo is frustrated. The board notes it.',
           effects: { starHappiness: +20, boardConfidence: -10, teamMorale: +8, fanReputation: +12 },
-          next: 'fan_event',
+          next: 'mid_season_chairman',
         },
         {
           label: 'Accept — £14M is good business.',
           hint: 'Paulo is satisfied. The squad is shaken. Marco leaves with dignity.',
           effects: { starSold: true, starHappiness: 0, teamMorale: -15, boardConfidence: +15, fanReputation: -20 },
           rootEffects: { budget: +14 },
-          next: 'fan_event',
+          next: 'mid_season_chairman',
         },
         {
           label: 'Counter: £20M or nothing.',
           hint: 'They walk away. Marco stays — but he heard about the bid.',
           effects: { starHappiness: -10, teamMorale: +3, boardConfidence: -3 },
-          next: 'fan_event',
+          next: 'mid_season_chairman',
         },
       ],
+    },
+
+    mid_season_chairman: {
+      id: 'mid_season_chairman', type: 'decision', phase: 'league',
+      background: 'bg-office',
+      character: 'chairman', name: 'Paulo Ferretti',
+      transition: {
+        location: "The Chairman's Office — January",
+        text: "Paulo waves you in without looking up. He has a printout of the league table open on his desk, a red pen in his hand. He circles something — your position — then looks at you.",
+      },
+      prompt: '"We\'re at the halfway point. January window is open. I\'m putting in five million. Where does it go?"',
+      calendarLabel: 'Mid-Season Review',
+      choices: [
+        {
+          label: 'Attack — we need goals to stay in the title race.',
+          hint: 'Paulo nods. The board wants forward firepower.',
+          effects: { boardConfidence: +8, teamMorale: +5 },
+          rootEffects: { budget: +5 },
+          next: 'transfer_window_2',
+        },
+        {
+          label: 'Defence — clean sheets win championships.',
+          hint: 'Solid, pragmatic. The squad will feel more secure.',
+          effects: { teamMorale: +8, boardConfidence: +5 },
+          rootEffects: { budget: +5 },
+          next: 'transfer_window_2',
+        },
+        {
+          label: 'Young talent — invest in the future.',
+          hint: 'A longer play. Paulo raises an eyebrow, but lets it go.',
+          effects: { youthInvestment: +12, fanReputation: +8, boardConfidence: -3 },
+          rootEffects: { budget: +5 },
+          next: 'transfer_window_2',
+        },
+      ],
+    },
+
+    transfer_window_2: {
+      id: 'transfer_window_2', type: 'minigame', phase: 'league',
+      transition: {
+        location: 'January Transfer Window',
+        text: "The window is open for six days. Agents are already circling. What you add now could define the second half of the season.",
+      },
+      miniGameType: 'transfer',
+      calendarLabel: 'January Window',
+      next: 'fan_event',
     },
 
     fan_event: {
@@ -1404,14 +1452,23 @@ window.Game.StoryData = (function () {
     // Champions Cup
     champ_group_check: {
       id: 'champ_group_check', type: 'gate',
-      // Qualified if won at least one group game (championsRound = 'ko' or 'group')
-      check: (state) => state.results.championsRound === 'ko' || state.results.championsRound === 'group',
+      check: (state) => {
+        if (!state.cups || !state.cups.champ) return false;
+        const GRP_A_IDS = ['valhalla', 'bayern_klauss', 'sporting_lisora', 'fc_aurora'];
+        const standings = window.Game.CupSim.groupStandings(state.cups.champ.groupA, GRP_A_IDS);
+        return standings.slice(0, 2).some(t => t.id === 'valhalla');
+      },
       ifTrue: 'player_conflict',
       ifFalse: 'champ_out_group',
     },
     champions_ko_check: {
       id: 'champions_ko_check', type: 'gate',
-      check: (state) => state.results.championsRound === 'ko' || state.results.championsRound === 'group',
+      check: (state) => {
+        if (!state.cups || !state.cups.champ) return false;
+        const GRP_A_IDS = ['valhalla', 'bayern_klauss', 'sporting_lisora', 'fc_aurora'];
+        const standings = window.Game.CupSim.groupStandings(state.cups.champ.groupA, GRP_A_IDS);
+        return standings.slice(0, 2).some(t => t.id === 'valhalla');
+      },
       ifTrue: 'champions_ko',
       ifFalse: 'locker_room_talk',
     },
@@ -1627,11 +1684,9 @@ window.Game.StoryData = (function () {
     scenes.transfer_window_1,
     scenes.captain_choice,
     scenes.training_1,
-    scenes.lineup_friendly,
     scenes.match_friendly,
     scenes.paulo_demands,
     scenes.season_kickoff,
-    scenes.lineup_league_1,
     scenes.match_league_1,
     scenes.post_match_1,
     scenes.training_2,
@@ -1652,12 +1707,15 @@ window.Game.StoryData = (function () {
     scenes.callup_decision,
     scenes.rotation_decision,
     scenes.champions_group_2,
-    scenes.champ_group_check,     // gate: qualified from groups?
+    scenes.champions_group_3,     // final group game vs FC Aurora
+    scenes.champ_group_check,     // gate: top 2 in group → qualify
     scenes.player_conflict,
     scenes.mentorship_scene,
     scenes.media_crisis,
     scenes.match_league_5,
     scenes.transfer_deadline,
+    scenes.mid_season_chairman,
+    scenes.transfer_window_2,
     scenes.fan_event,
     scenes.staff_hiring,
     scenes.match_league_6,

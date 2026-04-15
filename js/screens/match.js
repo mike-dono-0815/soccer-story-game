@@ -7,7 +7,7 @@ window.Game.Screens = window.Game.Screens || {};
 
 window.Game.Screens.Match = (function () {
 
-  function render(scene) {
+  function render(scene, onAdvance) {
     const { State, Utils, Engine } = window.Game;
     const state = State.get();
 
@@ -19,6 +19,9 @@ window.Game.Screens.Match = (function () {
     const summary = window.Game.MatchSummary.generate(scene, result, state);
     State.recordPlayerStats(summary.events, summary.potm, scene.competition || 'VPL', state.lineup);
     State.save();
+
+    // Build surname → player lookup for tappable name tags
+    const playerLookup = buildPlayerLookup(state);
 
     const isHome     = scene.homeAway === 'home';
     const homeTeam   = isHome ? 'FC Valhalla' : (scene.opponent || 'Opponent');
@@ -65,7 +68,7 @@ window.Game.Screens.Match = (function () {
     const scrollArea = document.createElement('div');
     scrollArea.className = 'match-scroll-area';
 
-    const rptPane = buildReport(summary.proseParts);
+    const rptPane = buildReport(summary.proseParts, playerLookup);
     rptPane.className = 'match-pane match-pane-report';
     scrollArea.appendChild(rptPane);
 
@@ -74,9 +77,24 @@ window.Game.Screens.Match = (function () {
     divider.textContent = 'Match Events';
     scrollArea.appendChild(divider);
 
-    const tlPane = buildTimeline(summary.events);
+    const tlPane = buildTimeline(summary.events, playerLookup);
     tlPane.className = 'match-pane match-pane-timeline';
     scrollArea.appendChild(tlPane);
+
+    // Tap any highlighted player name to see their card
+    scrollArea.addEventListener('click', e => {
+      const tag = e.target.closest('.player-tag');
+      if (!tag) return;
+      const player = state.squad.find(p => p.id === tag.dataset.pid);
+      if (player) showPlayerCard(player, state);
+    });
+    scrollArea.addEventListener('touchend', e => {
+      const tag = e.target.closest('.player-tag');
+      if (!tag) return;
+      e.preventDefault();
+      const player = state.squad.find(p => p.id === tag.dataset.pid);
+      if (player) showPlayerCard(player, state);
+    }, { passive: false });
 
     content.appendChild(scrollArea);
 
@@ -96,7 +114,13 @@ window.Game.Screens.Match = (function () {
       const nextId = (result.outcome === 'win' && scene.onWin)   ? scene.onWin
                    : (result.outcome !== 'win' && scene.onLoss)  ? scene.onLoss
                    : scene.next || null;
-      if (nextId) Engine.advance(nextId); else Engine.next();
+      if (typeof onAdvance === 'function') {
+        onAdvance(nextId);
+      } else if (nextId) {
+        Engine.advance(nextId);
+      } else {
+        Engine.next();
+      }
     };
     const onDone = () => {
       if (summary.keyMoment) {
@@ -197,7 +221,7 @@ window.Game.Screens.Match = (function () {
 
   // ── Timeline ──────────────────────────────────────────────────
 
-  function buildTimeline(events) {
+  function buildTimeline(events, lookup) {
     const pane = document.createElement('div');
 
     const goalCount = events.filter(e => e.type === 'goal').length;
@@ -223,13 +247,20 @@ window.Game.Screens.Match = (function () {
 
         const main = document.createElement('div');
         main.className = 'tl-main';
-        main.innerHTML = `<span class="tl-min">${minStr(ev.minute)}</span><span class="tl-scorer">${ev.scorerShort}</span>`;
+        const scorerHtml = (ev.isValhalla && ev.scorerId)
+          ? `<button class="player-tag tl-scorer" data-pid="${ev.scorerId}">${ev.scorerShort}</button>`
+          : `<span class="tl-scorer">${ev.scorerShort}</span>`;
+        main.innerHTML = `<span class="tl-min">${minStr(ev.minute)}</span>${scorerHtml}`;
         body.appendChild(main);
 
         if (ev.assist && ev.isValhalla) {
           const sub = document.createElement('div');
           sub.className = 'tl-sub';
-          sub.textContent = `Assist: ${ev.assistShort}`;
+          if (ev.assistId) {
+            sub.innerHTML = `Assist: <button class="player-tag" data-pid="${ev.assistId}">${ev.assistShort}</button>`;
+          } else {
+            sub.textContent = `Assist: ${ev.assistShort}`;
+          }
           body.appendChild(sub);
         }
 
@@ -312,15 +343,119 @@ window.Game.Screens.Match = (function () {
     return wrap;
   }
 
+  // ── Player lookup & card overlay ─────────────────────────────
+
+  // Maps each squad player's surname → player object (for tappable name tags)
+  function buildPlayerLookup(state) {
+    const map = {};
+    (state.squad || []).forEach(p => {
+      const surname = p.name.split(' ').pop();
+      map[surname] = p;
+    });
+    return map;
+  }
+
+  function showPlayerCard(player, state) {
+    const stats = (state.playerStats || {})[player.id] || {};
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'player-card-backdrop';
+
+    const card = document.createElement('div');
+    card.className = 'player-card-modal';
+
+    // Header: position badge + close button
+    const header = document.createElement('div');
+    header.className = 'pc-header';
+
+    const posBadge = document.createElement('div');
+    posBadge.className = 'pc-pos-badge';
+    posBadge.textContent = player.position;
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'pc-close';
+    closeBtn.textContent = '✕';
+
+    header.appendChild(posBadge);
+    header.appendChild(closeBtn);
+    card.appendChild(header);
+
+    // Name
+    const nameEl = document.createElement('div');
+    nameEl.className = 'pc-name';
+    nameEl.textContent = player.name;
+    card.appendChild(nameEl);
+
+    // Rating + age
+    const metaRow = document.createElement('div');
+    metaRow.className = 'pc-meta';
+    const ratingEl = document.createElement('span');
+    ratingEl.className = 'pc-rating';
+    ratingEl.textContent = `★ ${player.rating}`;
+    const ageEl = document.createElement('span');
+    ageEl.className = 'pc-age';
+    ageEl.textContent = `Age ${player.age}`;
+    metaRow.appendChild(ratingEl);
+    metaRow.appendChild(ageEl);
+    card.appendChild(metaRow);
+
+    // Season stats section
+    const sectionLabel = document.createElement('div');
+    sectionLabel.className = 'pc-section-label';
+    sectionLabel.textContent = 'Season Stats';
+    card.appendChild(sectionLabel);
+
+    const statsGrid = document.createElement('div');
+    statsGrid.className = 'pc-stats';
+    [
+      { label: 'Apps',    val: stats.apps    || 0 },
+      { label: 'Goals',   val: stats.goals   || 0 },
+      { label: 'Assists', val: stats.assists  || 0 },
+      { label: 'POTM',    val: stats.potm    || 0 },
+    ].forEach(s => {
+      const cell = document.createElement('div');
+      cell.className = 'pc-stat-cell';
+      const valEl = document.createElement('div');
+      valEl.className = 'pc-stat-val';
+      valEl.textContent = s.val;
+      const lblEl = document.createElement('div');
+      lblEl.className = 'pc-stat-label';
+      lblEl.textContent = s.label;
+      cell.appendChild(valEl);
+      cell.appendChild(lblEl);
+      statsGrid.appendChild(cell);
+    });
+    card.appendChild(statsGrid);
+
+    backdrop.appendChild(card);
+
+    // Dismiss on backdrop tap or close button
+    const dismiss = () => backdrop.remove();
+    closeBtn.addEventListener('click', dismiss);
+    closeBtn.addEventListener('touchend', e => { e.preventDefault(); dismiss(); }, { passive: false });
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) dismiss(); });
+    backdrop.addEventListener('touchend', e => {
+      if (e.target === backdrop) { e.preventDefault(); dismiss(); }
+    }, { passive: false });
+
+    const container = document.querySelector('.game-container') || document.body;
+    container.appendChild(backdrop);
+  }
+
   // ── Report ────────────────────────────────────────────────────
 
-  function buildReport(proseParts) {
+  function buildReport(proseParts, lookup) {
     const pane = document.createElement('div');
     proseParts.forEach(part => {
       const p = document.createElement('p');
       p.className = 'report-para';
-      // Convert **bold** markers to <strong>
-      p.innerHTML = part.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      // Convert **name** markers: tappable tag for squad players, bold otherwise
+      p.innerHTML = part.replace(/\*\*([^*]+)\*\*/g, (_, name) => {
+        const player = lookup && lookup[name];
+        return player
+          ? `<button class="player-tag" data-pid="${player.id}">${name}</button>`
+          : `<strong>${name}</strong>`;
+      });
       pane.appendChild(p);
     });
     return pane;
@@ -330,7 +465,7 @@ window.Game.Screens.Match = (function () {
 
   // Knockout rounds (non-group cup matches) must always have a winner
   function isKnockoutMatch(scene) {
-    const groupScenes = new Set(['champions_group_1', 'champions_group_2']);
+    const groupScenes = new Set(['champions_group_1', 'champions_group_2', 'champions_group_3']);
     if (groupScenes.has(scene.id)) return false;
     return ['FA Cup', 'Champions Cup', 'Club World Cup'].includes(scene.competition);
   }
@@ -396,8 +531,8 @@ window.Game.Screens.Match = (function () {
 
     const difficulty = scene.difficulty || 0.5;
     let outcome;
-    if (score > difficulty + 0.08)      outcome = 'win';
-    else if (score > difficulty - 0.08) outcome = 'draw';
+    if (score > difficulty + 0.06)      outcome = 'win';
+    else if (score > difficulty - 0.06) outcome = 'draw';
     else                                 outcome = 'loss';
 
     const scoreline = buildScoreline(outcome, scene);

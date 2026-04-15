@@ -82,10 +82,12 @@ window.Game.Characters = (function () {
     const pngFile = pngMap[characterId];
 
     const div = document.createElement('div');
-    // portrait-image class lets CSS handle sizing (fills portrait area when large)
     div.className = isLarge ? 'portrait-wrap portrait-image' : 'portrait-wrap portrait-image-small';
 
-    if (!isLarge) {
+    if (isLarge) {
+      // Fill the portrait area; img handles its own scaling
+      div.style.cssText = 'width:100%;height:100%;display:flex;align-items:flex-end;justify-content:center;overflow:hidden;';
+    } else {
       // Small version (decision panel decoration) keeps a fixed size
       div.style.cssText = 'width:120px;height:160px;display:flex;align-items:flex-end;justify-content:center;';
     }
@@ -95,7 +97,10 @@ window.Game.Characters = (function () {
     const img = document.createElement('img');
     img.src = pngFile;
     img.alt = (data[characterId] || {}).name || '';
-    if (!isLarge) {
+    if (isLarge) {
+      // Constrain to the portrait-wrap; object-fit:contain preserves aspect ratio
+      img.style.cssText = 'max-width:100%;max-height:100%;width:auto;height:auto;display:block;object-fit:contain;object-position:bottom center;';
+    } else {
       img.style.cssText = 'width:100%;height:100%;object-fit:contain;object-position:bottom center;';
     }
     div.appendChild(img);
