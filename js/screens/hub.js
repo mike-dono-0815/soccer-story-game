@@ -363,10 +363,121 @@ window.Game.Screens.Hub = (function () {
     saveBtn.addEventListener('touchend', e => { e.preventDefault(); onSave(); }, { passive: false });
     footer.appendChild(saveBtn);
 
+    const loadBtn = document.createElement('button');
+    loadBtn.className = 'hub-btn-icon';
+    loadBtn.title = 'Load game';
+    loadBtn.textContent = '📂';
+    const onLoad = () => showLoadModal(div);
+    loadBtn.addEventListener('click', onLoad);
+    loadBtn.addEventListener('touchend', e => { e.preventDefault(); onLoad(); }, { passive: false });
+    footer.appendChild(loadBtn);
 
     div.appendChild(footer);
 
     Utils.render(div);
+  }
+
+  function showLoadModal(container) {
+    // Remove any existing modal
+    const existing = container.querySelector('.hub-load-backdrop');
+    if (existing) existing.remove();
+
+    const { State, Engine } = window.Game;
+    const slots = State.listSlots();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'hub-load-backdrop';
+
+    const modal = document.createElement('div');
+    modal.className = 'hub-load-modal';
+
+    const header = document.createElement('div');
+    header.className = 'hub-load-header';
+    const headerTitle = document.createElement('div');
+    headerTitle.className = 'hub-load-title';
+    headerTitle.textContent = 'Load Game';
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'hub-load-close';
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', () => backdrop.remove());
+    closeBtn.addEventListener('touchend', e => { e.preventDefault(); backdrop.remove(); }, { passive: false });
+    header.appendChild(headerTitle);
+    header.appendChild(closeBtn);
+    modal.appendChild(header);
+
+    if (slots.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'hub-load-empty';
+      empty.textContent = 'No saved games found.';
+      modal.appendChild(empty);
+    } else {
+      slots.forEach(slot => {
+        const card = document.createElement('div');
+        card.className = 'hub-load-slot';
+
+        const info = document.createElement('div');
+        info.className = 'hub-load-slot-info';
+
+        const name = document.createElement('div');
+        name.className = 'hub-load-slot-name';
+        name.textContent = slot.managerName;
+
+        const date = document.createElement('div');
+        date.className = 'hub-load-slot-date';
+        date.textContent = _fmtSlotDate(slot.savedAt);
+
+        const progress = document.createElement('div');
+        progress.className = 'hub-load-slot-progress';
+        progress.textContent = _weekLabel(slot.week);
+
+        info.appendChild(name);
+        info.appendChild(date);
+        info.appendChild(progress);
+
+        const loadSlotBtn = document.createElement('button');
+        loadSlotBtn.className = 'hub-load-slot-btn';
+        loadSlotBtn.textContent = 'Load ›';
+        const isCurrent = slot.managerName === State.get().meta.managerName;
+        const doLoad = () => {
+          const msg = isCurrent
+            ? 'Load this save? Any unsaved progress will be lost.'
+            : `Switch to "${slot.managerName}"? Any unsaved progress will be lost.`;
+          if (confirm(msg)) {
+            State.loadSlot(slot.id);
+            backdrop.remove();
+            Engine.showHub();
+          }
+        };
+        loadSlotBtn.addEventListener('click', doLoad);
+        loadSlotBtn.addEventListener('touchend', e => { e.preventDefault(); doLoad(); }, { passive: false });
+
+        card.appendChild(info);
+        card.appendChild(loadSlotBtn);
+        modal.appendChild(card);
+      });
+    }
+
+    backdrop.appendChild(modal);
+    container.appendChild(backdrop);
+
+    // Dismiss on backdrop tap
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove(); });
+    backdrop.addEventListener('touchend', e => { if (e.target === backdrop) { e.preventDefault(); backdrop.remove(); } }, { passive: false });
+  }
+
+  function _fmtSlotDate(ts) {
+    if (!ts) return 'Unknown date';
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      + ' · ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function _weekLabel(week) {
+    if (!week || week === 0) return 'Pre-Season';
+    if (week <= 12) return `Week ${week} · Early Season`;
+    if (week <= 23) return `Week ${week} · Mid-Season`;
+    if (week <= 30) return `Week ${week} · Run-In`;
+    return `Week ${week} · Final Stretch`;
   }
 
   function showSaveToast(container) {

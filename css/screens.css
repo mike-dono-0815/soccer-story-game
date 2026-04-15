@@ -256,6 +256,96 @@
 .hub-save-toast.hub-save-toast-show { opacity: 1; }
 .hub-save-toast.hub-save-toast-hide { opacity: 0; transition: opacity 0.4s ease; }
 
+/* Hub load modal */
+.hub-load-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: var(--safe-bottom);
+}
+.hub-load-modal {
+  width: 100%;
+  max-height: 70%;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.hub-load-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.hub-load-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+.hub-load-close {
+  font-size: 16px;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.hub-load-empty {
+  padding: 24px 20px;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-align: center;
+}
+.hub-load-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.hub-load-slot:last-child { border-bottom: none; }
+.hub-load-slot-info { flex: 1; min-width: 0; }
+.hub-load-slot-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hub-load-slot-date {
+  font-size: 11px;
+  color: var(--accent-gold);
+  opacity: 0.85;
+  margin-bottom: 2px;
+}
+.hub-load-slot-progress {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.hub-load-slot-btn {
+  padding: 8px 14px;
+  background: var(--accent-gold);
+  color: #000;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  flex-shrink: 0;
+  min-height: var(--tap-min);
+}
+
 /* --- STORY INTRO ----------------------------------------- */
 
 .screen-story-intro {
@@ -268,12 +358,14 @@
   background: #07080f;
 }
 .story-intro-img {
-  width: 100%;
+  width: calc(100% - 44px);
+  margin: 0 22px;
   max-height: 38vh;
   object-fit: cover;
   object-position: center top;
   display: block;
   flex-shrink: 0;
+  border-radius: var(--radius-md);
 }
 .story-intro-card {
   flex: 1;
