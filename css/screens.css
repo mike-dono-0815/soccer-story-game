@@ -123,6 +123,139 @@
 }
 .name-setup input:focus { border-color: var(--accent-gold); }
 
+/* Save tip */
+.menu-save-tip {
+  margin-top: 20px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+  opacity: 0.7;
+  text-align: center;
+}
+
+/* Back link */
+.menu-back-link {
+  display: block;
+  color: var(--accent-gold);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-bottom: 20px;
+  opacity: 0.8;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Saved games section label */
+.menu-section-label {
+  width: 100%;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  margin-top: 4px;
+}
+
+/* Save slot list */
+.menu-slot-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.menu-slot-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+.menu-slot-info {
+  flex: 1;
+  min-width: 0;
+}
+.menu-slot-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-slot-date {
+  font-size: 11px;
+  color: var(--accent-gold);
+  opacity: 0.85;
+  margin-bottom: 2px;
+}
+.menu-slot-progress {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.menu-slot-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.menu-slot-load {
+  padding: 8px 14px;
+  background: var(--accent-gold);
+  color: #000;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: var(--tap-min);
+}
+.menu-slot-delete {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 14px;
+  color: var(--text-dim);
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity var(--transition);
+}
+.menu-slot-delete:hover { opacity: 1; color: var(--accent-red); }
+
+/* Hub save toast */
+.hub-save-toast {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 24, 40, 0.92);
+  border: 1px solid var(--accent-gold);
+  border-radius: 24px;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-gold);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  z-index: 200;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+.hub-save-toast.hub-save-toast-show { opacity: 1; }
+.hub-save-toast.hub-save-toast-hide { opacity: 0; transition: opacity 0.4s ease; }
+
 /* --- STORY INTRO ----------------------------------------- */
 
 .screen-story-intro {
@@ -176,6 +309,7 @@
   flex-direction: column;
   background: var(--bg-primary);
   padding-top: var(--safe-top);
+  position: relative;
 }
 .hub-header {
   padding: 16px 20px 12px;

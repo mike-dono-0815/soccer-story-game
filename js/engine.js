@@ -18,7 +18,7 @@ window.Game.Engine = (function () {
     const root = document.getElementById('game-root');
     root.innerHTML = '';
 
-    playIntro(() => renderMainMenu(hasSave));
+    playIntro(() => renderMainMenu(false));
   }
 
   function playIntro(onDone) {
@@ -72,19 +72,35 @@ window.Game.Engine = (function () {
   // MAIN MENU
   // ============================================================
 
-  function renderMainMenu(hasSave) {
+  function _fmtSaveDate(ts) {
+    if (!ts) return 'Unknown date';
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+      + ' · ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function _weekLabel(week) {
+    if (!week || week === 0) return 'Pre-Season';
+    if (week <= 12) return `Week ${week} · Early Season`;
+    if (week <= 23) return `Week ${week} · Mid-Season`;
+    if (week <= 30) return `Week ${week} · Run-In`;
+    return `Week ${week} · Final Stretch`;
+  }
+
+  function renderMainMenu(forceNew) {
+    const slots = State.listSlots();
+    const showSlots = !forceNew && slots.length > 0;
+
     const div = document.createElement('div');
     div.className = 'game-container';
 
     const screen = document.createElement('div');
     screen.className = 'screen-menu screen-enter';
 
-    // Stars bg
     const stars = document.createElement('div');
     stars.className = 'menu-stars';
     screen.appendChild(stars);
 
-    // Stadium art
     const stadiumArt = document.createElement('div');
     stadiumArt.className = 'menu-stadium-art';
     screen.appendChild(stadiumArt);
@@ -101,7 +117,6 @@ window.Game.Engine = (function () {
     crest.appendChild(crestLetter);
     content.appendChild(crest);
 
-    // Title
     const title = document.createElement('div');
     title.className = 'menu-title';
     title.textContent = 'THE GAFFER';
@@ -112,11 +127,99 @@ window.Game.Engine = (function () {
     subtitle.textContent = 'A Soccer Story';
     content.appendChild(subtitle);
 
-    const buttons = document.createElement('div');
-    buttons.className = 'menu-buttons';
+    if (showSlots) {
+      // ── Saved games list ──────────────────────────────────────
+      const sectionLabel = document.createElement('div');
+      sectionLabel.className = 'menu-section-label';
+      sectionLabel.textContent = 'Saved Games';
+      content.appendChild(sectionLabel);
 
-    if (!hasSave) {
-      // Name input
+      const slotList = document.createElement('div');
+      slotList.className = 'menu-slot-list';
+
+      slots.forEach(slot => {
+        const card = document.createElement('div');
+        card.className = 'menu-slot-card';
+
+        const info = document.createElement('div');
+        info.className = 'menu-slot-info';
+
+        const name = document.createElement('div');
+        name.className = 'menu-slot-name';
+        name.textContent = slot.managerName;
+
+        const date = document.createElement('div');
+        date.className = 'menu-slot-date';
+        date.textContent = _fmtSaveDate(slot.savedAt);
+
+        const progress = document.createElement('div');
+        progress.className = 'menu-slot-progress';
+        progress.textContent = _weekLabel(slot.week);
+
+        info.appendChild(name);
+        info.appendChild(date);
+        info.appendChild(progress);
+
+        const actions = document.createElement('div');
+        actions.className = 'menu-slot-actions';
+
+        const loadBtn = document.createElement('button');
+        loadBtn.className = 'menu-slot-load';
+        loadBtn.textContent = 'Load ›';
+        const doLoad = () => {
+          State.loadSlot(slot.id);
+          resumeGame();
+        };
+        loadBtn.addEventListener('click', doLoad);
+        loadBtn.addEventListener('touchend', e => { e.preventDefault(); doLoad(); }, { passive: false });
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'menu-slot-delete';
+        delBtn.textContent = '✕';
+        delBtn.title = 'Delete save';
+        const doDel = () => {
+          if (confirm(`Delete save for "${slot.managerName}"?`)) {
+            State.deleteSlot(slot.id);
+            renderMainMenu(State.listSlots().length === 0);
+          }
+        };
+        delBtn.addEventListener('click', doDel);
+        delBtn.addEventListener('touchend', e => { e.preventDefault(); doDel(); }, { passive: false });
+
+        actions.appendChild(loadBtn);
+        actions.appendChild(delBtn);
+
+        card.appendChild(info);
+        card.appendChild(actions);
+        slotList.appendChild(card);
+      });
+
+      content.appendChild(slotList);
+
+      // New game
+      const buttons = document.createElement('div');
+      buttons.className = 'menu-buttons';
+      const newGameBtn = document.createElement('button');
+      newGameBtn.className = 'btn-secondary';
+      newGameBtn.textContent = '+ New Game';
+      const doNew = () => renderMainMenu(true);
+      newGameBtn.addEventListener('click', doNew);
+      newGameBtn.addEventListener('touchend', e => { e.preventDefault(); doNew(); }, { passive: false });
+      buttons.appendChild(newGameBtn);
+      content.appendChild(buttons);
+
+    } else {
+      // ── New game form ─────────────────────────────────────────
+      if (slots.length > 0) {
+        // Back link when coming from forceNew
+        const backBtn = document.createElement('button');
+        backBtn.className = 'menu-back-link';
+        backBtn.textContent = '‹ Back to saves';
+        backBtn.addEventListener('click', () => renderMainMenu(false));
+        backBtn.addEventListener('touchend', e => { e.preventDefault(); renderMainMenu(false); }, { passive: false });
+        content.appendChild(backBtn);
+      }
+
       const nameSetup = document.createElement('div');
       nameSetup.className = 'name-setup';
       const nameLabel = document.createElement('label');
@@ -125,56 +228,33 @@ window.Game.Engine = (function () {
       nameInput.type = 'text';
       nameInput.placeholder = 'Enter your name...';
       nameInput.maxLength = 24;
-      nameInput.value = State.get().meta.managerName === 'The Gaffer' ? '' : State.get().meta.managerName;
       nameSetup.appendChild(nameLabel);
       nameSetup.appendChild(nameInput);
       content.appendChild(nameSetup);
 
+      const buttons = document.createElement('div');
+      buttons.className = 'menu-buttons';
       const startBtn = document.createElement('button');
       startBtn.className = 'btn-primary';
       startBtn.textContent = 'Begin Season';
-      startBtn.addEventListener('click', () => {
+      const doStart = () => {
         const name = nameInput.value.trim() || 'The Gaffer';
+        State.reset(); // ensure fresh state
         State.get().meta.managerName = name;
         State.save();
         startGame();
-      });
-      startBtn.addEventListener('touchend', e => {
-        e.preventDefault();
-        const name = nameInput.value.trim() || 'The Gaffer';
-        State.get().meta.managerName = name;
-        State.save();
-        startGame();
-      }, { passive: false });
+      };
+      startBtn.addEventListener('click', doStart);
+      startBtn.addEventListener('touchend', e => { e.preventDefault(); doStart(); }, { passive: false });
       buttons.appendChild(startBtn);
-    } else {
-      const continueBtn = document.createElement('button');
-      continueBtn.className = 'btn-primary';
-      continueBtn.textContent = 'Continue Season';
-      continueBtn.addEventListener('click', () => resumeGame());
-      continueBtn.addEventListener('touchend', e => { e.preventDefault(); resumeGame(); }, { passive: false });
-      buttons.appendChild(continueBtn);
-
-      const newGameBtn = document.createElement('button');
-      newGameBtn.className = 'btn-secondary';
-      newGameBtn.textContent = 'New Game';
-      newGameBtn.addEventListener('click', () => {
-        if (confirm('Start a new game? Your current save will be lost.')) {
-          State.reset();
-          renderMainMenu(false);
-        }
-      });
-      newGameBtn.addEventListener('touchend', e => {
-        e.preventDefault();
-        if (confirm('Start a new game? Your current save will be lost.')) {
-          State.reset();
-          renderMainMenu(false);
-        }
-      }, { passive: false });
-      buttons.appendChild(newGameBtn);
+      content.appendChild(buttons);
     }
 
-    content.appendChild(buttons);
+    // Save tip
+    const tip = document.createElement('div');
+    tip.className = 'menu-save-tip';
+    tip.textContent = 'Tap 💾 in the Hub to save your progress anytime';
+    content.appendChild(tip);
 
     const version = document.createElement('div');
     version.className = 'menu-version';

@@ -6,8 +6,11 @@ window.Game = window.Game || {};
 
 window.Game.State = (function () {
 
-  const SAVE_KEY = 'thegaffer_v1';
-  const SCHEMA_VERSION = 1;
+  const SAVE_KEY = 'thegaffer_v1';       // legacy single-slot key (migration only)
+  const SAVES_INDEX_KEY = 'thegaffer_saves';
+  const SAVE_PREFIX     = 'thegaffer_save_';
+  const MAX_SAVES       = 5;
+  const SCHEMA_VERSION  = 1;
 
   // Generate positional stats (str/mid/def/gk) from position + overall rating
   function ps(pos, r) {
@@ -137,52 +140,116 @@ window.Game.State = (function () {
 
   let _state = null;
 
+  // ── Slot index helpers ──────────────────────────────────────────
+  function _readIndex() {
+    try { return JSON.parse(localStorage.getItem(SAVES_INDEX_KEY) || '[]'); }
+    catch (e) { return []; }
+  }
+  function _writeIndex(index) {
+    localStorage.setItem(SAVES_INDEX_KEY, JSON.stringify(index));
+  }
+
+  function _backfill() {
+    if (!_state.league || !_state.league.fixtures) {
+      _state.league = { round: 0, fixtures: window.Game.LeagueSim.simulateSeason() };
+    }
+    if (!_state.cups) { _state.cups = window.Game.CupSim.simulateAll(); }
+    if (!_state.playerStats) { _state.playerStats = {}; }
+  }
+
+  function _freshState() {
+    const s = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    s.league = { round: 0, fixtures: window.Game.LeagueSim.simulateSeason() };
+    s.cups = window.Game.CupSim.simulateAll();
+    return s;
+  }
+
+  // ── Public API ──────────────────────────────────────────────────
+  function listSlots() {
+    return _readIndex().slice().sort((a, b) => b.savedAt - a.savedAt);
+  }
+
+  function loadSlot(id) {
+    try {
+      const raw = localStorage.getItem(SAVE_PREFIX + id);
+      if (!raw) return false;
+      const parsed = JSON.parse(raw);
+      if (parsed.meta && parsed.meta.version === SCHEMA_VERSION) {
+        _state = parsed;
+        _backfill();
+        return true;
+      }
+    } catch (e) { console.warn('Load slot failed:', e); }
+    return false;
+  }
+
+  function deleteSlot(id) {
+    localStorage.removeItem(SAVE_PREFIX + id);
+    _writeIndex(_readIndex().filter(s => s.id !== id));
+  }
+
   function init() {
-    const saved = localStorage.getItem(SAVE_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
+    // New multi-slot system
+    const index = _readIndex();
+    if (index.length > 0) {
+      const sorted = index.slice().sort((a, b) => b.savedAt - a.savedAt);
+      if (loadSlot(sorted[0].id)) return true;
+    }
+
+    // Migration: single legacy save → new system
+    try {
+      const legacy = localStorage.getItem(SAVE_KEY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
         if (parsed.meta && parsed.meta.version === SCHEMA_VERSION) {
           _state = parsed;
-          // Back-fill league fixtures for saves that pre-date this feature
-          if (!_state.league || !_state.league.fixtures) {
-            _state.league = { round: 0, fixtures: window.Game.LeagueSim.simulateSeason() };
-          }
-          // Back-fill cups data for saves that pre-date this feature
-          if (!_state.cups) {
-            _state.cups = window.Game.CupSim.simulateAll();
-          }
-          if (!_state.playerStats) {
-            _state.playerStats = {};
-          }
-          return true; // has save
+          _backfill();
+          save(); // migrate into new slot
+          localStorage.removeItem(SAVE_KEY);
+          return true;
         }
-      } catch (e) {
-        console.warn('Save load failed, starting fresh:', e);
       }
-    }
-    _state = JSON.parse(JSON.stringify(DEFAULT_STATE));
-    _state.league = { round: 0, fixtures: window.Game.LeagueSim.simulateSeason() };
-    _state.cups = window.Game.CupSim.simulateAll();
-    return false; // no save
+    } catch (e) { /* ignore */ }
+
+    // Fresh game
+    _state = _freshState();
+    return false;
   }
 
-  function get() {
-    return _state;
-  }
+  function get() { return _state; }
 
   function save() {
+    if (!_state) return;
     _state.meta.savedAt = Date.now();
-    try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify(_state));
-    } catch (e) {
-      console.warn('Save failed:', e);
+    const index = _readIndex();
+    let slot = index.find(s => s.managerName === _state.meta.managerName);
+    if (!slot) {
+      slot = { id: String(_state.meta.savedAt) };
+      index.push(slot);
+      // Prune oldest if over limit
+      if (index.length > MAX_SAVES) {
+        const oldest = index.slice().sort((a, b) => a.savedAt - b.savedAt)[0];
+        localStorage.removeItem(SAVE_PREFIX + oldest.id);
+        index.splice(index.findIndex(s => s.id === oldest.id), 1);
+      }
     }
+    // Update metadata in index
+    slot.managerName  = _state.meta.managerName;
+    slot.savedAt      = _state.meta.savedAt;
+    slot.week         = _state.progress.seasonWeek;
+    slot.eventIndex   = _state.progress.currentEventIndex;
+    _writeIndex(index);
+    try { localStorage.setItem(SAVE_PREFIX + slot.id, JSON.stringify(_state)); }
+    catch (e) { console.warn('Save failed:', e); }
   }
 
   function reset() {
-    localStorage.removeItem(SAVE_KEY);
-    _state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    // Delete this manager's slot only; other managers' saves stay
+    if (_state && _state.meta.managerName) {
+      const slot = _readIndex().find(s => s.managerName === _state.meta.managerName);
+      if (slot) deleteSlot(slot.id);
+    }
+    _state = _freshState();
   }
 
   // Apply story effects: numbers = meter delta (clamped), others = direct set
@@ -376,6 +443,6 @@ window.Game.State = (function () {
     return 'sacked'; // fallback if nothing else fits
   }
 
-  return { init, get, save, reset, applyEffects, applyRootEffects, recordResult, recordPlayerStats, addCompetitionWin, evaluateEnding };
+  return { init, get, save, reset, listSlots, loadSlot, deleteSlot, applyEffects, applyRootEffects, recordResult, recordPlayerStats, addCompetitionWin, evaluateEnding };
 
 })();

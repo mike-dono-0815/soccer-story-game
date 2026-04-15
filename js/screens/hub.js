@@ -351,10 +351,42 @@ window.Game.Screens.Hub = (function () {
     calendarBtn.addEventListener('touchend', e => { e.preventDefault(); window.Game.Screens.Calendar.render(); }, { passive: false });
     footer.appendChild(calendarBtn);
 
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'hub-btn-icon';
+    saveBtn.title = 'Save game';
+    saveBtn.textContent = '💾';
+    const onSave = () => {
+      State.save();
+      showSaveToast(div);
+    };
+    saveBtn.addEventListener('click', onSave);
+    saveBtn.addEventListener('touchend', e => { e.preventDefault(); onSave(); }, { passive: false });
+    footer.appendChild(saveBtn);
+
 
     div.appendChild(footer);
 
     Utils.render(div);
+  }
+
+  function showSaveToast(container) {
+    // Remove any existing toast
+    const existing = container.querySelector('.hub-save-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = 'hub-save-toast';
+    toast.textContent = '✓ Game Saved';
+    container.appendChild(toast);
+
+    // Trigger animation: visible → fade out after delay
+    requestAnimationFrame(() => {
+      toast.classList.add('hub-save-toast-show');
+      setTimeout(() => {
+        toast.classList.add('hub-save-toast-hide');
+        setTimeout(() => toast.remove(), 400);
+      }, 1800);
+    });
   }
 
   return { render };
