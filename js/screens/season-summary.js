@@ -56,7 +56,8 @@ window.Game.Screens.SeasonSummary = (function () {
 
     return squad
       .map(p => ({
-        name: p.name,
+        id:    p.id,
+        name:  p.name,
         goals: (stats[p.id] && stats[p.id].goals) || 0,
         apps:  (stats[p.id] && stats[p.id].apps)  || 0,
       }))
@@ -200,7 +201,15 @@ window.Game.Screens.SeasonSummary = (function () {
         rank.textContent = (i + 1) + '.';
         const name = document.createElement('span');
         name.className = 'ss-scorer-name';
-        name.textContent = p.name;
+        const _ssu = window.Game.Characters.getStickerUrl(p.id);
+        if (_ssu) {
+          const _sic = document.createElement('img');
+          _sic.className = 'player-sticker-icon';
+          _sic.src = _ssu;
+          _sic.alt = '';
+          name.appendChild(_sic);
+        }
+        name.appendChild(document.createTextNode(window.Game.Characters.getShortName(p)));
         const goals = document.createElement('span');
         goals.className = 'ss-scorer-goals';
         goals.textContent = p.goals + ' goals';

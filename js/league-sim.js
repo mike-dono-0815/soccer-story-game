@@ -7,27 +7,28 @@ window.Game = window.Game || {};
 window.Game.LeagueSim = (function () {
 
   // 18 VPL teams. Valhalla is index 0.
-  // Opponents named in story events (Red Cliffs Athletic, Ironclad United,
-  // Holbrook Rangers) are kept consistent with story-data.js.
+  // All 7 story VPL opponents are included here so they appear in the league
+  // table and between-rounds summaries. Holbrook Rangers is an FA Cup opponent
+  // only (not VPL) and is not included.
   const TEAMS = [
     { id: 'valhalla',   name: 'FC Valhalla',          strength: 76 },
     { id: 'ironport',   name: 'Ironport City',         strength: 86 },
+    { id: 'castello',   name: 'Castello FC',           strength: 85 },
     { id: 'blackwood',  name: 'Blackwood City',        strength: 83 },
     { id: 'ironclad',   name: 'Ironclad United',       strength: 81 },
     { id: 'westbridge', name: 'Westbridge FC',         strength: 80 },
+    { id: 'northstars', name: 'Northern Stars FC',     strength: 79 },
     { id: 'greenvale',  name: 'Greenvale United',      strength: 78 },
     { id: 'northgate',  name: 'Northgate United',      strength: 77 },
     { id: 'silverton',  name: 'Silverton Athletic',    strength: 76 },
     { id: 'portholm',   name: 'Port Holmvik SC',       strength: 75 },
     { id: 'eastport',   name: 'Eastport Town',         strength: 74 },
+    { id: 'redstorm',   name: 'Red Storm FC',          strength: 73 },
     { id: 'dalemark',   name: 'Dalemark Rangers',      strength: 73 },
     { id: 'redcliffs',  name: 'Red Cliffs Athletic',   strength: 72 },
     { id: 'helmsby',    name: 'Helmsby Town',          strength: 70 },
     { id: 'ashbrook',   name: 'Ashbrook FC',           strength: 69 },
     { id: 'redstone',   name: 'Redstone Athletic',     strength: 68 },
-    { id: 'crofton',    name: 'Crofton Athletic',      strength: 66 },
-    { id: 'holbrook',   name: 'Holbrook Rangers',      strength: 64 },
-    { id: 'hollowmoor', name: 'Hollowmoor Rovers',     strength: 62 },
   ];
 
   // Maps story VPL match scene IDs to the league round they represent.
@@ -41,6 +42,77 @@ window.Game.LeagueSim = (function () {
     match_league_6:     25,
     match_title_decider: 34,
   };
+
+  // Story-pinned fixtures: which team Valhalla must face at each story round,
+  // and whether Valhalla is home or away. Used by buildValhallaSchedule().
+  const STORY_PINS = [
+    { round: 1,  teamId: 'redstorm',   valHome: true  },  // match_league_1
+    { round: 5,  teamId: 'castello',   valHome: false },  // match_league_2
+    { round: 9,  teamId: 'ironclad',   valHome: true  },  // match_league_3
+    { round: 13, teamId: 'northstars', valHome: false },  // match_league_4
+    { round: 19, teamId: 'ironclad',   valHome: false },  // match_league_5
+    { round: 25, teamId: 'redcliffs',  valHome: true  },  // match_league_6
+    { round: 34, teamId: 'castello',   valHome: true  },  // match_title_decider
+  ];
+
+  // Build Valhalla's complete 34-game schedule with story fixtures pinned and
+  // remaining opponents distributed across non-story rounds (deterministic).
+  // Returns object: roundNum (1-based) → [homeTeamIdx, awayTeamIdx]
+  function buildValhallaSchedule() {
+    const schedule = {};
+    const pinnedRounds = new Set(STORY_PINS.map(p => p.round));
+    const pinnedTeamLegs = {}; // teamId → legs consumed by story pins
+
+    for (const { round, teamId, valHome } of STORY_PINS) {
+      const tIdx = TEAMS.findIndex(t => t.id === teamId);
+      schedule[round] = valHome ? [0, tIdx] : [tIdx, 0];
+      pinnedTeamLegs[teamId] = (pinnedTeamLegs[teamId] || 0) + 1;
+    }
+
+    // Determine which legs still need scheduling for each non-Valhalla team.
+    // Each team needs exactly 2 legs (1 home + 1 away) total.
+    // Teams fully covered by story pins (ironclad × 2, castello × 2) need nothing more.
+    const remaining = [];
+    for (const t of TEAMS.slice(1)) {
+      const consumed = pinnedTeamLegs[t.id] || 0;
+      const tIdx = TEAMS.indexOf(t);
+      if (consumed === 0) {
+        remaining.push([0, tIdx]);   // home leg
+        remaining.push([tIdx, 0]);   // away leg
+      } else if (consumed === 1) {
+        // One leg done — check which. If valHome was true for this team's pin,
+        // the home leg is done, so we need the away leg, and vice-versa.
+        const pin = STORY_PINS.find(p => p.teamId === t.id);
+        if (pin.valHome) {
+          remaining.push([tIdx, 0]); // need away leg
+        } else {
+          remaining.push([0, tIdx]); // need home leg
+        }
+      }
+      // consumed === 2: both legs covered by story pins → nothing to add
+    }
+    // remaining should have exactly 27 entries (34 total − 7 story rounds)
+
+    // Deterministic shuffle for variety without randomness
+    const seed = 0xDEAD;
+    let s = seed;
+    const rand = () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 0xFFFFFFFF; };
+    for (let i = remaining.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [remaining[i], remaining[j]] = [remaining[j], remaining[i]];
+    }
+
+    const nonPinnedRounds = [];
+    for (let r = 1; r <= 34; r++) {
+      if (!pinnedRounds.has(r)) nonPinnedRounds.push(r);
+    }
+
+    for (let i = 0; i < nonPinnedRounds.length; i++) {
+      schedule[nonPinnedRounds[i]] = remaining[i];
+    }
+
+    return schedule;
+  }
 
   // ─── Schedule ──────────────────────────────────────────────
 
@@ -107,10 +179,23 @@ window.Game.LeagueSim = (function () {
   }
 
   // Pre-simulate ALL 306 matches (including Valhalla's).
-  // Story matches for Valhalla will overwrite the Valhalla entries later.
+  // Valhalla's fixtures are pinned via buildValhallaSchedule() so story
+  // opponents always appear at the correct rounds with correct home/away.
+  // Story match outcomes for Valhalla will be overwritten by simulateBetweenRounds.
   // Returns: array[34] of array[9] of [homeIdx, awayIdx, hGoals, aGoals]
   function simulateSeason() {
     const schedule = generateSchedule();
+    const valSchedule = buildValhallaSchedule();
+
+    // Override Valhalla's fixture in each round with the pinned schedule
+    for (let r = 0; r < schedule.length; r++) {
+      const roundNum = r + 1;
+      const pinned = valSchedule[roundNum];
+      if (!pinned) continue;
+      const valSlot = schedule[r].findIndex(([h, a]) => h === 0 || a === 0);
+      if (valSlot >= 0) schedule[r][valSlot] = pinned;
+    }
+
     return schedule.map(round =>
       round.map(([h, a]) => {
         const [hg, ag] = simGoals(TEAMS[h].strength, TEAMS[a].strength);
@@ -161,6 +246,23 @@ window.Game.LeagueSim = (function () {
   const GOAL_WEIGHT   = { GK:1, CB:3, LB:3, RB:3, DM:5, CM:10, LM:15, RM:15, LW:15, RW:15, CAM:20, ST:35, CF:35 };
   const ASSIST_WEIGHT = { GK:0, CB:3, LB:5, RB:5, DM:8, CM:18, LM:18, RM:18, LW:18, RW:18, CAM:25, ST:8,  CF:8  };
 
+  // Opponent scorer name pool (matches the pool in match-summary.js)
+  const OPP_NAMES = [
+    'Rossi','Müller','Petrov','Nkrumah','Tanaka','Brennan','Kowalski','Marchetti',
+    'Bergqvist','Ferreira','Lindqvist','Johansson','Dembélé','Volkov','Ndidi',
+    'Kruse','Cardoso','Almeida','Yilmaz','Dupont','Osei','Stankovic','Sakamoto',
+    'Ribeiro','Holmberg','Nakamura','Dzeko','Kessler','Andriessen','Papadopoulos',
+    'Traoré','Gomes','Ibrahim','Baptiste','Fernández','Hassan','Eriksen','Kovač',
+  ];
+
+  // Deterministic scorer name for a given opponent + goal index
+  function _oppScorerName(opponentId, goalIdx) {
+    let h = 5381;
+    const key = opponentId + '_g' + goalIdx;
+    for (let i = 0; i < key.length; i++) h = ((h << 5) + h ^ key.charCodeAt(i)) >>> 0;
+    return OPP_NAMES[h % OPP_NAMES.length];
+  }
+
   function _weightedPick(players, weightMap, excludeId) {
     const pool = excludeId ? players.filter(p => p.id !== excludeId) : players;
     if (!pool.length) return null;
@@ -173,20 +275,17 @@ window.Game.LeagueSim = (function () {
     return pool[pool.length - 1];
   }
 
-  // Simulate scorers, assists, and POTM for a Valhalla match.
-  // Returns { events: [{minute, scorerId, scorerName, assistId, assistName}], potm: {id,name} }
-  function simulateMatchEvents(valGoals, lineup, squad) {
+  // Simulate scorers, assists, POTM, and opponent scorers for a Valhalla match.
+  // Returns { events: [{minute, isValhalla, scorerId?, scorerName, assistId?, assistName?}], potm }
+  function simulateMatchEvents(valGoals, oppGoals, opponentId, lineup, squad) {
     const players = (lineup || []).map(id => (squad || []).find(p => p.id === id)).filter(Boolean);
-    if (!players.length || valGoals === 0) {
-      const potm = players.length ? players[Math.floor(Math.random() * players.length)] : null;
-      return { events: [], potm: potm ? { id: potm.id, name: potm.name } : null };
-    }
+    const shortName = p => window.Game.Characters.getShortName(p);
 
     const goalCounts = {}, assistCounts = {};
-    const minutes = Array.from({ length: valGoals }, () => Math.floor(Math.random() * 90) + 1).sort((a, b) => a - b);
-    const events = [];
+    const valMinutes = Array.from({ length: valGoals }, () => Math.floor(Math.random() * 90) + 1).sort((a, b) => a - b);
+    const valEvents = [];
 
-    for (const minute of minutes) {
+    for (const minute of valMinutes) {
       const scorer = _weightedPick(players, GOAL_WEIGHT, null);
       if (!scorer) continue;
       goalCounts[scorer.id] = (goalCounts[scorer.id] || 0) + 1;
@@ -196,17 +295,28 @@ window.Game.LeagueSim = (function () {
         assister = _weightedPick(players, ASSIST_WEIGHT, scorer.id);
         if (assister) assistCounts[assister.id] = (assistCounts[assister.id] || 0) + 1;
       }
-      const lastName = n => n.split(' ').pop();
-      events.push({
+      valEvents.push({
         minute,
+        isValhalla: true,
         scorerId:   scorer.id,
-        scorerName: lastName(scorer.name),
-        assistId:   assister ? assister.id   : null,
-        assistName: assister ? lastName(assister.name) : null,
+        scorerName: shortName(scorer),
+        assistId:   assister ? assister.id        : null,
+        assistName: assister ? shortName(assister) : null,
       });
     }
 
-    // POTM: highest weighted contribution (goals count double)
+    // Opponent goal events with real names
+    const oppMinutes = Array.from({ length: oppGoals }, () => Math.floor(Math.random() * 90) + 1).sort((a, b) => a - b);
+    const oppEvents = oppMinutes.map((minute, i) => ({
+      minute,
+      isValhalla: false,
+      scorerName: _oppScorerName(opponentId, i),
+    }));
+
+    // Merge and sort all events by minute
+    const events = [...valEvents, ...oppEvents].sort((a, b) => a.minute - b.minute);
+
+    // POTM: highest weighted contribution (goals double)
     let potm = null, best = -1;
     for (const p of players) {
       const score = (goalCounts[p.id] || 0) * 2 + (assistCounts[p.id] || 0);
@@ -214,9 +324,12 @@ window.Game.LeagueSim = (function () {
         best = score; potm = p;
       }
     }
-    if (!potm || best === 0) potm = players[Math.floor(Math.random() * players.length)];
+    if (!potm || best === 0) potm = players.length ? players[Math.floor(Math.random() * players.length)] : null;
 
-    return { events, potm: { id: potm.id, name: potm.name } };
+    return {
+      events,
+      potm: potm ? { id: potm.id, name: shortName(potm) } : null,
+    };
   }
 
   // Simulate Valhalla's matches for rounds fromRound..toRound (1-based, inclusive).
@@ -253,7 +366,7 @@ window.Game.LeagueSim = (function () {
       const result = { round: r, opponent: opp.name, homeAway: isHome ? 'home' : 'away', outcome, valGoals, oppGoals };
 
       if (squadInfo) {
-        const { events, potm } = simulateMatchEvents(valGoals, squadInfo.lineup, squadInfo.squad);
+        const { events, potm } = simulateMatchEvents(valGoals, oppGoals, opp.id, squadInfo.lineup, squadInfo.squad);
         result.events = events;
         result.potm   = potm;
       }

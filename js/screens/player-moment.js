@@ -137,13 +137,65 @@ window.Game.Screens.PlayerMoment = (function () {
     },
   };
 
-  const ACHIEVEMENT_LABELS = {
-    scored_goal:       'Goal',
-    scored_winner:     'Match Winner',
-    scored_brace:      'Brace',
-    scored_equaliser:  'Equaliser',
-    assisted:          'Decisive Assist',
-    potm:              'Player of the Match',
+  // ── Category tags (small badge above headline) ────────────────
+  const CATEGORY_TAGS = {
+    scored_goal:      'GOAL',
+    scored_winner:    'MATCH WINNER',
+    scored_brace:     'BRACE',
+    scored_equaliser: 'EQUALISER',
+    assisted:         'ASSIST',
+    potm:             'PLAYER OF THE MATCH',
+  };
+
+  // ── Narrative headlines ────────────────────────────────────────
+  // {name} = player first-name / short name, {score} = score string e.g. "2–1"
+  const HEADLINES = {
+    scored_goal: [
+      "What a finish from {name} — making it {score}!",
+      "{name} finds the net at {score}. The crowd erupts.",
+      "A goal for {name}. Timed to perfection.",
+      "{name} strikes and it's {score}. This changes the game.",
+      "That's a goal — and it belongs to {name}!",
+      "{name} steps up and delivers. {score} on the board.",
+    ],
+    scored_winner: [
+      "{name} wins it for Valhalla. Scenes!",
+      "The match-winner — it's {name}. Unbelievable.",
+      "{name} delivers when it matters most. Three points secured.",
+      "Cue the celebrations — {name} seals the points!",
+      "That's the one. {name} puts the result beyond doubt.",
+      "Nobody will forget this. {name} with the winner.",
+    ],
+    scored_brace: [
+      "Two goals for {name}. An astonishing brace.",
+      "{name} doubles up — what a day for the {pos}.",
+      "That's two from {name}. Impossible to stop today.",
+      "{name} scores twice and the fans are on their feet.",
+      "A brace for {name}. The performance of the season so far.",
+    ],
+    scored_equaliser: [
+      "{name} pulls Valhalla level. We're back in this!",
+      "Don't count them out — {name} makes it {score}!",
+      "{name} refuses to accept defeat. The equaliser is his.",
+      "Stunning from {name} — Valhalla are level at {score}!",
+      "{name} drags Valhalla back into the contest. {score}.",
+    ],
+    assisted: [
+      "The vision of {name} — a decisive assist.",
+      "{name} creates the moment. That pass was exceptional.",
+      "A game-changing assist from {name}. Pure craft.",
+      "It was {name} who made it happen. What a delivery.",
+      "The architect — {name} with an assist to remember.",
+      "{name} sees it before anyone else. Brilliant.",
+    ],
+    potm: [
+      "An outstanding performance. {name} takes the honours.",
+      "{name} was simply the best player on the pitch today.",
+      "Player of the Match — {name}. Nobody would argue.",
+      "The award goes where it belongs: {name}.",
+      "From first whistle to last, {name} was magnificent.",
+      "Head and shoulders above the rest. {name} — Player of the Match.",
+    ],
   };
 
   function quoteKey(type, detail) {
@@ -158,14 +210,28 @@ window.Game.Screens.PlayerMoment = (function () {
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
+  function pickHeadline(type, detail, playerName, scoreStr, position) {
+    const key  = quoteKey(type, detail);
+    const pool = HEADLINES[key] || HEADLINES.potm;
+    const raw  = pool[Math.floor(Math.random() * pool.length)];
+    const shortName = playerName.split(' ')[0]; // first name
+    const pos = position || '';
+    return raw
+      .replace(/\{name\}/g, shortName)
+      .replace(/\{score\}/g, scoreStr || '–')
+      .replace(/\{pos\}/g, pos);
+  }
+
   // ── Render ─────────────────────────────────────────────────────
 
   function show(moment, onDone) {
     const { Characters, Utils } = window.Game;
-    const { character, player, type, detail } = moment;
+    const { character, player, type, detail, scoreStr } = moment;
     const char = Characters.get(character);
-    const quote = pickQuote(character, type, detail);
-    const label = ACHIEVEMENT_LABELS[quoteKey(type, detail)] || 'Player of the Match';
+    const quote    = pickQuote(character, type, detail);
+    const headline = pickHeadline(type, detail, player.name, scoreStr, player.position);
+    const key      = quoteKey(type, detail);
+    const tag      = CATEGORY_TAGS[key] || 'PLAYER OF THE MATCH';
 
     const div = document.createElement('div');
     div.className = 'game-container';
@@ -190,10 +256,17 @@ window.Game.Screens.PlayerMoment = (function () {
     const card = document.createElement('div');
     card.className = 'player-moment-card';
 
-    const achiev = document.createElement('div');
-    achiev.className = 'player-moment-achievement';
-    achiev.textContent = label;
+    // Small category tag
+    const tagEl = document.createElement('div');
+    tagEl.className = 'player-moment-achievement';
+    tagEl.textContent = tag;
 
+    // Narrative headline
+    const headlineEl = document.createElement('div');
+    headlineEl.className = 'player-moment-headline';
+    headlineEl.textContent = headline;
+
+    // Player name
     const name = document.createElement('div');
     name.className = 'player-moment-name';
     name.style.color = char.color;
@@ -203,7 +276,8 @@ window.Game.Screens.PlayerMoment = (function () {
     quoteEl.className = 'player-moment-quote';
     quoteEl.textContent = `"${quote}"`;
 
-    card.appendChild(achiev);
+    card.appendChild(tagEl);
+    card.appendChild(headlineEl);
     card.appendChild(name);
     card.appendChild(quoteEl);
     screen.appendChild(card);

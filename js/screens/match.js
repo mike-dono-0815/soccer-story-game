@@ -20,17 +20,15 @@ window.Game.Screens.Match = (function () {
     State.recordPlayerStats(summary.events, summary.potm, scene.competition || 'VPL', state.lineup);
     State.save();
 
-    // Build surname → player lookup for tappable name tags
     const playerLookup = buildPlayerLookup(state);
 
-    const isHome     = scene.homeAway === 'home';
-    const homeTeam   = isHome ? 'FC Valhalla' : (scene.opponent || 'Opponent');
-    const awayTeam   = isHome ? (scene.opponent || 'Opponent') : 'FC Valhalla';
+    const isHome   = scene.homeAway === 'home';
+    const homeTeam = isHome ? 'FC Valhalla' : (scene.opponent || 'Opponent');
+    const awayTeam = isHome ? (scene.opponent || 'Opponent') : 'FC Valhalla';
 
     const div = document.createElement('div');
     div.className = 'screen-match';
 
-    // Pitch background art
     const pitchArt = document.createElement('div');
     pitchArt.className = 'match-pitch-art';
     pitchArt.innerHTML = `
@@ -53,20 +51,40 @@ window.Game.Screens.Match = (function () {
     compHeader.appendChild(Utils.mkTrophy(scene.competition || 'VPL', 'sm'));
     content.appendChild(compHeader);
 
-    // Scoreboard
-    content.appendChild(buildScoreboard(result, summary, homeTeam, awayTeam, isHome));
+    // ── Live scoreboard (starts 0–0, populated during simulation) ──
+    const { sbEl, homeNumEl, awayNumEl, hCol, aCol } = buildLiveScoreboard(homeTeam, awayTeam, isHome);
+    content.appendChild(sbEl);
 
-    // Result label
+    // ── Running clock bar (hidden after simulation) ──────────────
+    const liveBar = document.createElement('div');
+    liveBar.className = 'match-live-bar';
+    liveBar.innerHTML = `<span class="match-live-badge">LIVE</span>`;
+    const clockEl = document.createElement('span');
+    clockEl.className = 'match-live-clock';
+    clockEl.textContent = "0'";
+    const progressOuter = document.createElement('div');
+    progressOuter.className = 'match-live-progress';
+    const progressFill = document.createElement('div');
+    progressFill.className = 'match-live-progress-fill';
+    progressOuter.appendChild(progressFill);
+    liveBar.appendChild(clockEl);
+    liveBar.appendChild(progressOuter);
+    content.appendChild(liveBar);
+
+    // ── Result label — hidden until simulation ends ──────────────
     const resultLabel = document.createElement('div');
     resultLabel.className = `match-result-label ${result.outcome}`;
     resultLabel.textContent = result.outcome === 'win' ? '⚡ VICTORY'
                             : result.outcome === 'draw' ? '⚖ DRAW'
                             : '💔 DEFEAT';
+    resultLabel.style.display = 'none';
     content.appendChild(resultLabel);
 
-    // Scrollable content area: report then timeline
+    // ── Scrollable summary area — hidden until simulation ends ───
     const scrollArea = document.createElement('div');
     scrollArea.className = 'match-scroll-area';
+    scrollArea.style.opacity = '0';
+    scrollArea.style.pointerEvents = 'none';
 
     const rptPane = buildReport(summary.proseParts, playerLookup);
     rptPane.className = 'match-pane match-pane-report';
@@ -81,7 +99,8 @@ window.Game.Screens.Match = (function () {
     tlPane.className = 'match-pane match-pane-timeline';
     scrollArea.appendChild(tlPane);
 
-    // Tap any highlighted player name to see their card
+    if (summary.potm) scrollArea.appendChild(buildPotm(summary.potm));
+
     scrollArea.addEventListener('click', e => {
       const tag = e.target.closest('.player-tag');
       if (!tag) return;
@@ -98,15 +117,10 @@ window.Game.Screens.Match = (function () {
 
     content.appendChild(scrollArea);
 
-    // Player of the Match
-    if (summary.potm) {
-      const potmSection = buildPotm(summary.potm);
-      scrollArea.appendChild(potmSection);
-    }
-
-    // Continue
+    // ── Footer — hidden until simulation ends ────────────────────
     const footer = document.createElement('div');
     footer.className = 'match-footer';
+    footer.style.display = 'none';
     const btn = document.createElement('button');
     btn.className = 'btn-primary';
     btn.textContent = 'Continue';
@@ -114,38 +128,205 @@ window.Game.Screens.Match = (function () {
       const nextId = (result.outcome === 'win' && scene.onWin)   ? scene.onWin
                    : (result.outcome !== 'win' && scene.onLoss)  ? scene.onLoss
                    : scene.next || null;
-      if (typeof onAdvance === 'function') {
-        onAdvance(nextId);
-      } else if (nextId) {
-        Engine.advance(nextId);
-      } else {
-        Engine.next();
-      }
+      if (typeof onAdvance === 'function') onAdvance(nextId);
+      else if (nextId) Engine.advance(nextId);
+      else Engine.next();
     };
     const onDone = () => {
-      if (summary.keyMoment) {
-        window.Game.Screens.PlayerMoment.show(summary.keyMoment, advance);
-      } else {
-        advance();
+      const moments = summary.keyMoments || [];
+      if (moments.length === 0) { advance(); return; }
+      let idx = 0;
+      function showNext() {
+        if (idx < moments.length) window.Game.Screens.PlayerMoment.show(moments[idx++], showNext);
+        else advance();
       }
+      showNext();
     };
     btn.addEventListener('click', onDone);
     btn.addEventListener('touchend', e => { e.preventDefault(); onDone(); }, { passive: false });
     footer.appendChild(btn);
     content.appendChild(footer);
 
+    // ── "Tap to skip" hint ────────────────────────────────────────
+    const skipHint = document.createElement('div');
+    skipHint.className = 'match-skip-hint';
+    skipHint.textContent = 'tap anywhere to skip';
+    div.appendChild(skipHint);
+
     div.appendChild(content);
     Utils.render(div);
 
-    // Subtle entrance animation
-    setTimeout(() => {
-      resultLabel.classList.add(result.outcome === 'win' ? 'pulse-good' : result.outcome === 'loss' ? 'shake' : '');
-    }, 300);
+    // ── Simulation ────────────────────────────────────────────────
+    const goalEvents = summary.events
+      .filter(e => e.type === 'goal')
+      .sort((a, b) => a.minute - b.minute);
+
+    const maxMinute   = Math.max(90, goalEvents.length ? goalEvents[goalEvents.length - 1].minute : 0);
+    const DURATION_MS = 30000;
+
+    // Which column belongs to Valhalla vs opponent
+    const vCol = isHome ? hCol : aCol;
+    const oCol = isHome ? aCol : hCol;
+
+    let simDone     = false;
+    let rafId       = null;
+    let startTime   = null;
+    let nextGoalIdx = 0;
+    let curHome = 0, curAway = 0;
+
+    function flashNum(el) {
+      el.classList.remove('sb-num-flash');
+      void el.offsetWidth; // force reflow to restart animation
+      el.classList.add('sb-num-flash');
+    }
+
+    function fireGoal(g, animate) {
+      const isHomeGoal = (isHome && g.isValhalla) || (!isHome && !g.isValhalla);
+      if (isHomeGoal) { curHome++; homeNumEl.textContent = curHome; if (animate) flashNum(homeNumEl); }
+      else            { curAway++; awayNumEl.textContent = curAway; if (animate) flashNum(awayNumEl); }
+
+      const el = document.createElement('div');
+      el.className = 'sb-scorer' + (animate ? ' sb-scorer-new' : '');
+      if (g.isValhalla) {
+        el.innerHTML = `<span class="sb-ball">⚽</span><span class="sb-scorer-name">${stickerHtml(g.scorerId)}${g.scorerShort}</span><span class="sb-scorer-min">${minStr(g.minute)}</span>`;
+        vCol.appendChild(el);
+      } else {
+        el.innerHTML = `<span class="sb-scorer-min">${minStr(g.minute)}</span><span class="sb-scorer-name">${g.scorerShort}</span><span class="sb-ball">⚽</span>`;
+        oCol.appendChild(el);
+      }
+    }
+
+    function finishSim() {
+      if (simDone) return;
+      simDone = true;
+      if (rafId) cancelAnimationFrame(rafId);
+
+      // Fire any goals not yet shown
+      while (nextGoalIdx < goalEvents.length) fireGoal(goalEvents[nextGoalIdx++], false);
+
+      // Correct to final score (handles AET extra goal, penalties staying at 90-min)
+      homeNumEl.textContent = result.homeGoals;
+      awayNumEl.textContent = result.awayGoals;
+
+      // Add AET / penalties badge to scorebox now that we know the final method
+      if (result.method === 'aet' || (result.method === 'penalties' && result.penScore)) {
+        const scoreBox = sbEl.querySelector('.match-sb-score');
+        if (scoreBox && !scoreBox.querySelector('.sb-method-badge')) {
+          const badge = document.createElement('div');
+          badge.className = 'sb-method-badge';
+          badge.textContent = result.method === 'aet'
+            ? 'AET'
+            : `${result.penScore.home}–${result.penScore.away} pens`;
+          scoreBox.appendChild(badge);
+        }
+      }
+
+      // Hide clock bar and skip hint
+      liveBar.style.display = 'none';
+      skipHint.style.display = 'none';
+
+      // Reveal result label
+      resultLabel.style.display = '';
+      setTimeout(() => {
+        resultLabel.classList.add(result.outcome === 'win' ? 'pulse-good' : result.outcome === 'loss' ? 'shake' : '');
+      }, 100);
+
+      // Fade in scroll area
+      scrollArea.style.transition = 'opacity 0.5s ease';
+      scrollArea.style.pointerEvents = '';
+      requestAnimationFrame(() => { scrollArea.style.opacity = '1'; });
+
+      // Show footer
+      footer.style.display = '';
+    }
+
+    function tick(timestamp) {
+      if (simDone) return;
+      if (!startTime) startTime = timestamp;
+      const elapsed  = Math.min(timestamp - startTime, DURATION_MS);
+      const progress = elapsed / DURATION_MS;
+      const gameMins = Math.floor(progress * maxMinute);
+
+      clockEl.textContent      = gameMins > 90 ? `90+${gameMins - 90}'` : `${gameMins}'`;
+      progressFill.style.width = `${progress * 100}%`;
+
+      while (nextGoalIdx < goalEvents.length && goalEvents[nextGoalIdx].minute <= gameMins) {
+        fireGoal(goalEvents[nextGoalIdx++], true);
+      }
+
+      if (elapsed >= DURATION_MS) { finishSim(); return; }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    // Tap anywhere to skip to the end
+    div.addEventListener('click',    () => finishSim());
+    div.addEventListener('touchend', e => { if (!simDone) { e.preventDefault(); finishSim(); } }, { passive: false });
+
+    rafId = requestAnimationFrame(tick);
   }
 
   function minStr(m) { return m > 90 ? `90+${m - 90}'` : `${m}'`; }
 
-  // ── Scoreboard ────────────────────────────────────────────────
+  // Returns an <img> HTML string for a key-player sticker, or '' if none.
+  function stickerHtml(charId) {
+    if (!charId) return '';
+    const url = window.Game.Characters.getStickerUrl(charId);
+    if (!url) return '';
+    return `<img class="player-sticker-icon" src="${url}" alt="">`;
+  }
+
+  // ── Live scoreboard (0–0 start, refs for live updates) ────────
+
+  function buildLiveScoreboard(homeTeam, awayTeam, isHome) {
+    const wrap = document.createElement('div');
+    wrap.className = 'match-sb-wrap';
+
+    const header = document.createElement('div');
+    header.className = 'match-sb-header';
+
+    const hName = document.createElement('div');
+    hName.className = 'match-sb-team' + (isHome ? ' valhalla' : '');
+    hName.textContent = homeTeam;
+
+    const scoreBox = document.createElement('div');
+    scoreBox.className = 'match-sb-score';
+    const homeNumEl = document.createElement('span');
+    homeNumEl.className = 'sb-num';
+    homeNumEl.textContent = '0';
+    const dash = document.createElement('span');
+    dash.className = 'sb-dash';
+    dash.textContent = '–';
+    const awayNumEl = document.createElement('span');
+    awayNumEl.className = 'sb-num';
+    awayNumEl.textContent = '0';
+    scoreBox.appendChild(homeNumEl);
+    scoreBox.appendChild(dash);
+    scoreBox.appendChild(awayNumEl);
+
+    const aName = document.createElement('div');
+    aName.className = 'match-sb-team' + (!isHome ? ' valhalla' : '');
+    aName.textContent = awayTeam;
+
+    header.appendChild(hName);
+    header.appendChild(scoreBox);
+    header.appendChild(aName);
+    wrap.appendChild(header);
+
+    // Scorer columns — always present, populated as goals fire
+    const scorersRow = document.createElement('div');
+    scorersRow.className = 'match-sb-scorers';
+    const hCol = document.createElement('div');
+    hCol.className = 'sb-scorer-col';
+    const aCol = document.createElement('div');
+    aCol.className = 'sb-scorer-col right';
+    scorersRow.appendChild(hCol);
+    scorersRow.appendChild(aCol);
+    wrap.appendChild(scorersRow);
+
+    return { sbEl: wrap, homeNumEl, awayNumEl, hCol, aCol };
+  }
+
+  // ── Scoreboard (static, kept for reference) ───────────────────
 
   function buildScoreboard(result, summary, homeTeam, awayTeam, isHome) {
     const wrap = document.createElement('div');
@@ -198,7 +379,7 @@ window.Game.Screens.Match = (function () {
       homeGoals.forEach(g => {
         const el = document.createElement('div');
         el.className = 'sb-scorer';
-        el.innerHTML = `<span class="sb-ball">⚽</span><span class="sb-scorer-name">${g.scorerShort}</span><span class="sb-scorer-min">${minStr(g.minute)}</span>`;
+        el.innerHTML = `<span class="sb-ball">⚽</span><span class="sb-scorer-name">${stickerHtml(g.scorerId)}${g.scorerShort}</span><span class="sb-scorer-min">${minStr(g.minute)}</span>`;
         hCol.appendChild(el);
       });
 
@@ -248,7 +429,7 @@ window.Game.Screens.Match = (function () {
         const main = document.createElement('div');
         main.className = 'tl-main';
         const scorerHtml = (ev.isValhalla && ev.scorerId)
-          ? `<button class="player-tag tl-scorer" data-pid="${ev.scorerId}">${ev.scorerShort}</button>`
+          ? `<button class="player-tag tl-scorer" data-pid="${ev.scorerId}">${stickerHtml(ev.scorerId)}${ev.scorerShort}</button>`
           : `<span class="tl-scorer">${ev.scorerShort}</span>`;
         main.innerHTML = `<span class="tl-min">${minStr(ev.minute)}</span>${scorerHtml}`;
         body.appendChild(main);
@@ -257,7 +438,7 @@ window.Game.Screens.Match = (function () {
           const sub = document.createElement('div');
           sub.className = 'tl-sub';
           if (ev.assistId) {
-            sub.innerHTML = `Assist: <button class="player-tag" data-pid="${ev.assistId}">${ev.assistShort}</button>`;
+            sub.innerHTML = `Assist: <button class="player-tag" data-pid="${ev.assistId}">${stickerHtml(ev.assistId)}${ev.assistShort}</button>`;
           } else {
             sub.textContent = `Assist: ${ev.assistShort}`;
           }
@@ -327,7 +508,19 @@ window.Game.Screens.Match = (function () {
 
     const name = document.createElement('div');
     name.className = 'match-potm-name';
-    name.textContent = potm.name;
+    if (!potm.isOpponent) {
+      const _su = window.Game.Characters.getStickerUrl(potm.id);
+      if (_su) {
+        const _ic = document.createElement('img');
+        _ic.className = 'player-sticker-icon';
+        _ic.src = _su;
+        _ic.alt = '';
+        name.appendChild(_ic);
+      }
+      name.appendChild(document.createTextNode(window.Game.Characters.getShortName(potm)));
+    } else {
+      name.textContent = potm.name;
+    }
 
     const detail = document.createElement('div');
     detail.className = 'match-potm-detail';

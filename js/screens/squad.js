@@ -150,7 +150,15 @@ window.Game.Screens.Squad = (function () {
 
     const nameEl = document.createElement('div');
     nameEl.className = 'squad-card-name';
-    nameEl.textContent = player.name;
+    const _sUrl = window.Game.Characters.getStickerUrl(player.id);
+    if (_sUrl) {
+      const _icon = document.createElement('img');
+      _icon.className = 'player-sticker-icon';
+      _icon.src = _sUrl;
+      _icon.alt = '';
+      nameEl.appendChild(_icon);
+    }
+    nameEl.appendChild(document.createTextNode(window.Game.Characters.getShortName(player)));
     top.appendChild(nameEl);
 
     const rightGroup = document.createElement('div');
@@ -305,7 +313,15 @@ window.Game.Screens.Squad = (function () {
 
         const nameEl = document.createElement('div');
         nameEl.className = 'stat-td-name';
-        nameEl.textContent = player.name;
+        const _sUrl2 = window.Game.Characters.getStickerUrl(player.id);
+        if (_sUrl2) {
+          const _icon2 = document.createElement('img');
+          _icon2.className = 'player-sticker-icon';
+          _icon2.src = _sUrl2;
+          _icon2.alt = '';
+          nameEl.appendChild(_icon2);
+        }
+        nameEl.appendChild(document.createTextNode(window.Game.Characters.getShortName(player)));
         row.appendChild(nameEl);
 
         const posEl = document.createElement('div');

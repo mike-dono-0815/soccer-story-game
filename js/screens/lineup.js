@@ -225,7 +225,15 @@ window.Game.Screens.Lineup = (function () {
       infoEl.className = 'player-info';
       const nameEl = document.createElement('div');
       nameEl.className = 'player-name';
-      nameEl.textContent = player.name;
+      const _stickerUrl = window.Game.Characters.getStickerUrl(player.id);
+      if (_stickerUrl) {
+        const _icon = document.createElement('img');
+        _icon.className = 'player-sticker-icon';
+        _icon.src = _stickerUrl;
+        _icon.alt = '';
+        nameEl.appendChild(_icon);
+      }
+      nameEl.appendChild(document.createTextNode(window.Game.Characters.getShortName(player)));
       const posEl = document.createElement('div');
       posEl.className = 'player-pos';
       posEl.textContent = isInjured    ? `${player.position} · Injured`
@@ -282,7 +290,7 @@ window.Game.Screens.Lineup = (function () {
           // Mark as already moved so the drag ghost shows immediately
           if (drag) drag.moved = true;
           pitchEl.querySelectorAll('.lineup-position-slot').forEach(s => s.classList.add('drag-available'));
-        }, 350);
+        }, 200);
 
         document.addEventListener('pointermove', onEarlyMove);
         document.addEventListener('pointerup',   onEarlyUp);
@@ -295,6 +303,11 @@ window.Game.Screens.Lineup = (function () {
 
     function refreshSquadCards() {
       squadList.innerHTML = '';
+      // Drag hint — shown once at the top of the list
+      const hint = document.createElement('div');
+      hint.className = 'lineup-drag-hint';
+      hint.textContent = '✦ Hold & drag players onto the pitch';
+      squadList.appendChild(hint);
       const sorted = sortedSquad(state.squad, slottedLineup, state.story.prodigyOnSquad);
       let lastGroup = null;
       sorted.forEach(player => {
@@ -347,7 +360,7 @@ window.Game.Screens.Lineup = (function () {
       const ghost = document.createElement('div');
       ghost.className = 'lineup-drag-ghost';
       const player = state.squad.find(p => p.id === playerId);
-      ghost.textContent = player ? abbrev(player.name) : '?';
+      ghost.textContent = player ? abbrev(player) : '?';
       ghost.style.left = e.clientX + 'px';
       ghost.style.top  = e.clientY + 'px';
       document.body.appendChild(ghost);
@@ -495,7 +508,7 @@ window.Game.Screens.Lineup = (function () {
 
         const nameLbl = document.createElement('div');
         nameLbl.className = 'slot-name';
-        nameLbl.textContent = abbrev(player.name);
+        nameLbl.textContent = abbrev(player);
 
         const ratLbl = document.createElement('div');
         ratLbl.className = 'slot-rating';
@@ -518,9 +531,9 @@ window.Game.Screens.Lineup = (function () {
 
   // ── Utilities ─────────────────────────────────────────────────
 
-  function abbrev(name) {
-    // Last name up to 5 chars
-    return name.split(' ').pop().slice(0, 5).toUpperCase();
+  function abbrev(player) {
+    const name = window.Game.Characters.getShortName(player);
+    return name.slice(0, 5).toUpperCase();
   }
 
   function countLabel(slottedLineup) {

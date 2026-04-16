@@ -526,8 +526,8 @@ window.Game.MatchSummary = (function () {
         const hS = isHome ? vScore : oScore, aS = isHome ? oScore : vScore;
         events.push({
           type: 'goal', minute: min, isValhalla: true,
-          scorer: scorer.name, scorerShort: scorer.name.split(' ').pop(), scorerId: scorer.id,
-          assist: assist ? assist.name : null, assistShort: assist ? assist.name.split(' ').pop() : null,
+          scorer: scorer.name, scorerShort: window.Game.Characters.getShortName(scorer), scorerId: scorer.id,
+          assist: assist ? assist.name : null, assistShort: assist ? window.Game.Characters.getShortName(assist) : null,
           assistId: assist ? assist.id : null,
           goalType: type, significance: sig,
           homeScore: hS, awayScore: aS, scoreStr: `${hS}–${aS}`,
@@ -588,7 +588,7 @@ window.Game.MatchSummary = (function () {
         const hS = isHome ? vScore : oScore, aS = isHome ? oScore : vScore;
         events.push({
           type: 'goal', minute: aetMin, isValhalla: true, isAET: true,
-          scorer: scorer.name, scorerShort: scorer.name.split(' ').pop(), scorerId: scorer.id,
+          scorer: scorer.name, scorerShort: window.Game.Characters.getShortName(scorer), scorerId: scorer.id,
           assist: null, assistShort: null, assistId: null,
           goalType: type, significance: 'go_ahead',
           homeScore: hS, awayScore: aS, scoreStr: `${hS}–${aS}`,
@@ -765,10 +765,12 @@ window.Game.MatchSummary = (function () {
 
   // ── Key Player Moment Detection ───────────────────────────────
 
-  function detectKeyMoment(events, potm, result, state) {
+  function detectKeyMoments(events, potm, result, state) {
     const vGoals = events.filter(e => e.type === 'goal' && e.isValhalla);
-    // Check star first (most dramatic), then prodigy (most surprising), then veteran
+    // star first (most dramatic), then prodigy (most surprising), then veteran
+    // All qualifying characters get a moment — they are shown sequentially
     const priority = ['star', 'prodigy', 'veteran'];
+    const moments = [];
 
     for (const charId of priority) {
       const player = state.squad.find(p => p.id === charId);
@@ -776,17 +778,19 @@ window.Game.MatchSummary = (function () {
       if (charId === 'prodigy' && !state.story.prodigyOnSquad) continue;
       if (!state.lineup.includes(charId)) continue;
 
-      const scored  = vGoals.filter(e => e.scorerId === charId);
+      const scored   = vGoals.filter(e => e.scorerId === charId);
       const assisted = vGoals.filter(e => e.assistId === charId);
       const isPotm   = potm && potm.id === charId;
 
       if (!scored.length && !assisted.length && !isPotm) continue;
 
-      let type, detail;
+      let type, detail, scoreStr = null;
       if (scored.length >= 2) {
         type = 'scored'; detail = 'brace';
+        scoreStr = scored[scored.length - 1].scoreStr;
       } else if (scored.length === 1) {
         const sig = scored[0].significance;
+        scoreStr = scored[0].scoreStr;
         if (result.outcome === 'win' && (sig === 'go_ahead' || sig === 'final_nail' || sig === 'insurance')) {
           type = 'scored'; detail = 'winner';
         } else if (sig === 'equaliser') {
@@ -796,13 +800,15 @@ window.Game.MatchSummary = (function () {
         }
       } else if (assisted.length) {
         type = 'assisted'; detail = assisted[0].significance;
+        scoreStr = assisted[0].scoreStr;
       } else {
         type = 'potm'; detail = null;
       }
 
-      return { character: charId, player, type, detail };
+      moments.push({ character: charId, player, type, detail, scoreStr });
     }
-    return null;
+
+    return moments;
   }
 
   // ── Public ────────────────────────────────────────────────────
@@ -828,10 +834,10 @@ window.Game.MatchSummary = (function () {
     const starters = state.lineup
       .map(id => state.squad.find(p => p.id === id))
       .filter(Boolean);
-    const potm       = pickPotm(events, starters, result, scene, rng);
-    const keyMoment  = detectKeyMoment(events, potm, result, state);
+    const potm        = pickPotm(events, starters, result, scene, rng);
+    const keyMoments  = detectKeyMoments(events, potm, result, state);
 
-    return { events, arc, proseParts, potm, keyMoment };
+    return { events, arc, proseParts, potm, keyMoments };
   }
 
   return { generate };

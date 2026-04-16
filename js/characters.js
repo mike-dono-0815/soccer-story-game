@@ -21,6 +21,7 @@ window.Game.Characters = (function () {
     },
     star: {
       name: 'Marco "El Tornado" Silva',
+      displayName: 'El Tornado',
       title: 'Star Forward',
       color: '#f5c842',
       accent: '#ffe080',
@@ -384,6 +385,20 @@ window.Game.Characters = (function () {
     return data[characterId] || { name: '', title: '', color: '#888', accent: '#aaa' };
   }
 
-  return { buildPortrait, get };
+  // Returns display name for a squad player:
+  // key characters with a displayName get that; everyone else gets their last name.
+  function getShortName(player) {
+    if (!player) return '';
+    const char = data[player.id];
+    if (char && char.displayName) return char.displayName;
+    return player.name.split(' ').pop();
+  }
+
+  // Returns the sticker PNG path for a character id, or null.
+  function getStickerUrl(charId) {
+    return pngMap[charId] || null;
+  }
+
+  return { buildPortrait, get, getShortName, getStickerUrl };
 
 })();

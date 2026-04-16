@@ -269,8 +269,11 @@ window.Game.Screens.LeagueRounds = (function () {
     scoreRow.appendChild(awayEl);
     modal.appendChild(scoreRow);
 
-    // Goal events
-    if (r.events && r.events.length > 0) {
+    // Goal events — all interleaved by minute
+    const allEvents = r.events && r.events.length > 0 ? r.events : [];
+    const hasGoals  = allEvents.length > 0 || r.valGoals > 0 || r.oppGoals > 0;
+
+    if (hasGoals) {
       const divider = document.createElement('div');
       divider.className = 'lr-detail-divider';
       modal.appendChild(divider);
@@ -278,43 +281,46 @@ window.Game.Screens.LeagueRounds = (function () {
       const eventsEl = document.createElement('div');
       eventsEl.className = 'lr-detail-events';
 
-      r.events.forEach(ev => {
-        const evRow = document.createElement('div');
-        evRow.className = 'lr-detail-event';
-
-        const minuteEl = document.createElement('span');
-        minuteEl.className = 'lr-detail-minute';
-        minuteEl.textContent = `${ev.minute}'`;
-
-        const icon = document.createElement('span');
-        icon.className = 'lr-detail-icon';
-        icon.textContent = '⚽';
-
-        const text = document.createElement('span');
-        text.className = 'lr-detail-event-text';
-        text.textContent = ev.assistName
-          ? `${ev.scorerName} (${ev.assistName})`
-          : ev.scorerName;
-
-        evRow.appendChild(minuteEl);
-        evRow.appendChild(icon);
-        evRow.appendChild(text);
-        eventsEl.appendChild(evRow);
-      });
-
-      // Opposition goals (no scorer data)
-      if (r.oppGoals > 0) {
-        const oppDivider = document.createElement('div');
-        oppDivider.className = 'lr-detail-opp-label';
-        oppDivider.textContent = r.opponent;
-        eventsEl.appendChild(oppDivider);
-
-        for (let i = 0; i < r.oppGoals; i++) {
+      if (allEvents.length === 0) {
+        // Goalless draw — show placeholder
+        const empty = document.createElement('div');
+        empty.className = 'lr-detail-no-goals';
+        empty.textContent = 'No goals scored';
+        eventsEl.appendChild(empty);
+      } else {
+        allEvents.forEach(ev => {
           const evRow = document.createElement('div');
-          evRow.className = 'lr-detail-event lr-detail-event-opp';
-          evRow.innerHTML = `<span class="lr-detail-icon">⚽</span><span class="lr-detail-event-text">Goal</span>`;
+          evRow.className = 'lr-detail-event' + (ev.isValhalla ? '' : ' lr-detail-event-opp');
+
+          const minuteEl = document.createElement('span');
+          minuteEl.className = 'lr-detail-minute';
+          minuteEl.textContent = `${ev.minute}'`;
+
+          const icon = document.createElement('span');
+          icon.className = 'lr-detail-icon';
+          icon.textContent = '⚽';
+
+          const text = document.createElement('span');
+          text.className = 'lr-detail-event-text';
+
+          if (ev.isValhalla) {
+            // Sticker icon for key players
+            const stickerUrl = ev.scorerId && window.Game.Characters.getStickerUrl(ev.scorerId);
+            const stickerImg = stickerUrl
+              ? `<img class="player-sticker-icon" src="${stickerUrl}" alt="">`
+              : '';
+            text.innerHTML = ev.assistName
+              ? `${stickerImg}${ev.scorerName} <span class="lr-assist">(${ev.assistName})</span>`
+              : `${stickerImg}${ev.scorerName}`;
+          } else {
+            text.innerHTML = `${ev.scorerName} <span class="lr-opp-tag">${r.opponent}</span>`;
+          }
+
+          evRow.appendChild(minuteEl);
+          evRow.appendChild(icon);
+          evRow.appendChild(text);
           eventsEl.appendChild(evRow);
-        }
+        });
       }
 
       modal.appendChild(eventsEl);
