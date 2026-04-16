@@ -38,8 +38,9 @@ window.Game.LeagueSim = (function () {
     match_league_2:      5,
     match_league_3:      9,
     match_league_4:     13,
-    match_league_5:     19,
-    match_league_6:     25,
+    match_league_5:      19,
+    match_league_6:      25,
+    match_league_7:      30,
     match_title_decider: 34,
   };
 
@@ -52,6 +53,7 @@ window.Game.LeagueSim = (function () {
     { round: 13, teamId: 'northstars', valHome: false },  // match_league_4
     { round: 19, teamId: 'ironclad',   valHome: false },  // match_league_5
     { round: 25, teamId: 'redcliffs',  valHome: true  },  // match_league_6
+    { round: 30, teamId: 'ironport',   valHome: false },  // match_league_7
     { round: 34, teamId: 'castello',   valHome: true  },  // match_title_decider
   ];
 
@@ -349,6 +351,13 @@ window.Game.LeagueSim = (function () {
       const oppIdx = isHome ? a : h;
       const opp = TEAMS[oppIdx];
 
+      // Positions BEFORE this round (used for "playing…" placeholder)
+      const tableBefore = computeTable(fixtures, r - 1);
+      const preValIdx = tableBefore.findIndex(t => t.id === 'valhalla');
+      const preOppIdx = tableBefore.findIndex(t => t.id === opp.id);
+      const preValPos = preValIdx >= 0 ? preValIdx + 1 : null;
+      const preOppPos = preOppIdx >= 0 ? preOppIdx + 1 : null;
+
       let hg, ag;
       if (isHome) {
         [hg, ag] = simGoals(valhallaStrength, opp.strength);
@@ -363,7 +372,14 @@ window.Game.LeagueSim = (function () {
       const oppGoals = isHome ? ag : hg;
       const outcome = valGoals > oppGoals ? 'win' : valGoals < oppGoals ? 'loss' : 'draw';
 
-      const result = { round: r, opponent: opp.name, homeAway: isHome ? 'home' : 'away', outcome, valGoals, oppGoals };
+      // Compute positions after this round
+      const tableNow = computeTable(fixtures, r);
+      const valTableIdx = tableNow.findIndex(t => t.id === 'valhalla');
+      const oppTableIdx = tableNow.findIndex(t => t.id === opp.id);
+      const valPos = valTableIdx >= 0 ? valTableIdx + 1 : null;
+      const oppPos = oppTableIdx >= 0 ? oppTableIdx + 1 : null;
+
+      const result = { round: r, opponent: opp.name, oppId: opp.id, homeAway: isHome ? 'home' : 'away', outcome, valGoals, oppGoals, valPos, oppPos, preValPos, preOppPos };
 
       if (squadInfo) {
         const { events, potm } = simulateMatchEvents(valGoals, oppGoals, opp.id, squadInfo.lineup, squadInfo.squad);

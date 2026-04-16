@@ -420,7 +420,7 @@ window.Game.StoryData = (function () {
       homeAway: 'home',
       difficulty: 0.4,
       week: 0,
-      calendarLabel: 'vs. Northgate City',
+      calendarLabel: 'FC Valhalla – Northgate City',
       next: 'paulo_demands',
     },
 
@@ -487,7 +487,6 @@ window.Game.StoryData = (function () {
       homeAway: 'home',
       difficulty: 0.45,
       week: 1,
-      calendarLabel: 'vs. Red Storm FC',
       next: 'post_match_1',
     },
 
@@ -537,7 +536,6 @@ window.Game.StoryData = (function () {
       homeAway: 'away',
       difficulty: 0.52,
       week: 3,
-      calendarLabel: 'vs. Castello FC (A)',
       next: 'fa_cup_r1',
     },
 
@@ -667,7 +665,6 @@ window.Game.StoryData = (function () {
       homeAway: 'home',
       difficulty: 0.60,
       week: 6,
-      calendarLabel: 'vs. Ironclad United',
       next: 'discipline_event',
     },
 
@@ -759,7 +756,7 @@ window.Game.StoryData = (function () {
       homeAway: 'away',
       difficulty: 0.60,
       week: 7,
-      calendarLabel: 'Champions Cup Group 1',
+      calendarLabel: 'Champions Cup – Game 1',
       next: 'training_3',
     },
 
@@ -777,7 +774,6 @@ window.Game.StoryData = (function () {
       homeAway: 'away',
       difficulty: 0.48,
       week: 8,
-      calendarLabel: 'vs. Northern Stars (A)',
       next: 'contract_decision',
     },
 
@@ -889,7 +885,7 @@ window.Game.StoryData = (function () {
       homeAway: 'home',
       difficulty: 0.55,
       week: 10,
-      calendarLabel: 'Champions Cup Group 2',
+      calendarLabel: 'Champions Cup – Game 2',
       next: null,
     },
 
@@ -900,7 +896,7 @@ window.Game.StoryData = (function () {
       homeAway: 'away',
       difficulty: 0.40,
       week: 11,
-      calendarLabel: 'Champions Cup Group 3',
+      calendarLabel: 'Champions Cup – Game 3',
       transition: {
         location: 'Away — Champions Cup Group Stage',
         text: "Final group game. FC Aurora haven't given up — a win here keeps their hopes alive. Everything still to play for. Your squad knows what's at stake.",
@@ -1165,7 +1161,20 @@ window.Game.StoryData = (function () {
       homeAway: 'home',
       difficulty: 0.50,
       week: 17,
-      calendarLabel: 'vs. Red Cliffs Athletic',
+      next: null,
+    },
+
+    match_league_7: {
+      id: 'match_league_7', type: 'match', phase: 'league',
+      transition: {
+        location: 'Ironport Stadium — The Final Push',
+        text: "Four games from the end. Ironport City away — the hardest fixture left on the calendar. Win here and the whole city starts to believe.",
+      },
+      competition: 'VPL',
+      opponent: 'Ironport City',
+      homeAway: 'away',
+      difficulty: 0.65,
+      week: 23,
       next: null,
     },
 
@@ -1188,7 +1197,7 @@ window.Game.StoryData = (function () {
       homeAway: 'away',
       difficulty: 0.62,
       week: 19,
-      calendarLabel: 'Champions Cup QF',
+      calendarLabel: 'Champions Cup – Semi-Final',
       next: null,
       onLoss: 'champ_out_ko',
     },
@@ -1295,7 +1304,6 @@ window.Game.StoryData = (function () {
       difficulty: 0.55,
       isFinal: false,
       week: 24,
-      calendarLabel: 'Title Decider vs. Castello',
       next: null,
     },
 
@@ -1455,8 +1463,26 @@ window.Game.StoryData = (function () {
         const standings = window.Game.CupSim.groupStandings(state.cups.champ.groupA, GRP_A_IDS);
         return standings.slice(0, 2).some(t => t.id === 'valhalla');
       },
-      ifTrue: 'player_conflict',
+      ifTrue: 'champ_group_qualified',
       ifFalse: 'champ_out_group',
+    },
+
+    champ_group_qualified: {
+      id: 'champ_group_qualified', type: 'story', phase: 'cups',
+      background: 'bg-office',
+      character: 'chairman', name: 'Paulo Ferretti',
+      transition: {
+        location: 'Champions Cup — Group Stage Complete',
+        text: "The final whistle echoes across Europe. When the dust settles and the standings are confirmed, Valhalla are through. Top two. The knockout rounds await.",
+      },
+      dialogue: [
+        "Paulo calls before you've even reached the dressing room.",
+        '"I\'ve been watching the group table all evening. Top two. We qualified for the Champions Cup semi-finals."',
+        '"When we drew into that group, I had real doubts. You proved me wrong. This whole squad proved me wrong."',
+        '"Enjoy tonight — you\'ve earned it. But from tomorrow we prepare. The best clubs in Europe will know our name now."',
+      ],
+      calendarLabel: 'Champions Cup — Group Qualified',
+      next: 'player_conflict',
     },
     champions_ko_check: {
       id: 'champions_ko_check', type: 'gate',
@@ -1537,9 +1563,9 @@ window.Game.StoryData = (function () {
 
     champ_out_ko: {
       id: 'champ_out_ko', type: 'knockout_transition',
-      competition: 'Champions Cup', round: 'Quarter-Final',
+      competition: 'Champions Cup', round: 'Semi-Final',
       lines: [
-        "Real Estrada end the Champions Cup run. Out at the quarter-final stage.",
+        "Real Estrada end the Champions Cup run. Out at the semi-final stage.",
         "A European campaign to be proud of — and a reminder of how much further there is to go.",
         "The dressing room will take time to recover. The season run-in demands more.",
       ],
@@ -1719,6 +1745,7 @@ window.Game.StoryData = (function () {
     scenes.fa_cup_sf,             // onLoss → fa_cup_out_sf (off-spine)
     scenes.champions_ko_check,    // gate: qualified for Champions KO?
     scenes.champions_ko,          // onLoss → champ_out_ko (off-spine)
+    scenes.match_league_7,        // VPL Round 30 — Ironport City away
     scenes.locker_room_talk,
     scenes.second_half_review,
     scenes.paulo_final_meeting,

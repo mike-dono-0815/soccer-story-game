@@ -194,12 +194,27 @@ window.Game.Screens.Hub = (function () {
 
       const resultsRow = document.createElement('div');
       resultsRow.className = 'hub-result-row';
-      r.lastResults.forEach(res => {
+      const details = r.lastResultDetails || [];
+      r.lastResults.forEach((res, i) => {
         const badge = document.createElement('span');
         badge.className = `badge badge-${res === 'W' ? 'win' : res === 'D' ? 'draw' : 'loss'}`;
         badge.textContent = res;
+        const d = details[i];
+        if (d && d.opponent) {
+          const score = (d.vGoals !== null && d.oGoals !== null) ? ` ${d.vGoals}–${d.oGoals}` : '';
+          const comp  = d.competition && d.competition !== 'VPL' ? ` (${d.competition})` : '';
+          badge.setAttribute('data-tooltip', `${d.opponent}${score}${comp}`);
+          badge.addEventListener('touchstart', e => {
+            e.stopPropagation();
+            document.querySelectorAll('.badge.tooltip-active').forEach(b => b.classList.remove('tooltip-active'));
+            badge.classList.add('tooltip-active');
+          }, { passive: true });
+        }
         resultsRow.appendChild(badge);
       });
+      div.addEventListener('touchstart', () => {
+        resultsRow.querySelectorAll('.badge.tooltip-active').forEach(b => b.classList.remove('tooltip-active'));
+      }, { passive: true });
       formWrap.appendChild(resultsRow);
       standingCard.appendChild(formWrap);
     }

@@ -36,6 +36,13 @@ window.Game.Screens.PlayerMoment = (function () {
         "A brace. Not my best day, but I'll take it. The squad needs me and I deliver. Every time.",
         "Two goals and I'm still not satisfied. That's what makes me different.",
       ],
+      scored_hat_trick: [
+        "Three goals. A hat-trick. Some people wait their whole career for this. I've been expecting it for weeks.",
+        "Hat-trick. I'd say I'm surprised, but I'm not. I've been doing this since I was twelve.",
+        "Three goals and people still talk about other strikers. What does it take?",
+        "The hat-trick was the least this performance deserved. I was absolutely imperious today.",
+        "I told Lena before kick-off. I said: I feel something special today. She didn't believe me. She will now.",
+      ],
       scored_equaliser: [
         "They thought they had us. They forgot I was on the pitch.",
         "Behind? With me in the team? I don't accept that. So I fixed it.",
@@ -77,6 +84,13 @@ window.Game.Screens.PlayerMoment = (function () {
         "The Gaffer will be more shocked than I am. These things don't happen often anymore. I'll enjoy it.",
         "Two goals at my age? The physio is going to think I've been hiding something.",
       ],
+      scored_hat_trick: [
+        "Three goals at my age. I need to call my doctor first, and then my wife.",
+        "The lads set me up perfectly three times. I just finished. They deserve all the credit for this.",
+        "I've scored maybe two hat-tricks in thirty years of football. Today was something very special.",
+        "I don't know what to say. It's a hat-trick. I'm thirty-four. None of this makes sense.",
+        "The young lads are staring at me in the dressing room. I don't blame them. I'm staring at myself.",
+      ],
       scored_equaliser: [
         "We weren't going to lose today. The character in this group is remarkable.",
         "I just did what needed to be done. Any of the lads would have done the same.",
@@ -116,6 +130,13 @@ window.Game.Screens.PlayerMoment = (function () {
         "I keep expecting someone to tell me it doesn't count. It counts, right? Both of them count?",
         "My mum is going to lose her mind when she sees this.",
       ],
+      scored_hat_trick: [
+        "Three goals. Three. I keep counting them. I've counted them eight times now. Three.",
+        "Hat-trick? A hat-trick? In a professional match? ME?",
+        "I don't — I can't — someone needs to explain this to me because I am completely lost.",
+        "My phone has completely melted. I don't know what to do. Three goals.",
+        "Roberto said 'well done lad' in the tunnel and I nearly cried. Three goals. Actually three.",
+      ],
       scored_equaliser: [
         "We were losing and I thought — this is the moment. And somehow it worked.",
         "The Gaffer told me to make something happen. I didn't think he meant literally immediately.",
@@ -142,6 +163,7 @@ window.Game.Screens.PlayerMoment = (function () {
     scored_goal:      'GOAL',
     scored_winner:    'MATCH WINNER',
     scored_brace:     'BRACE',
+    scored_hat_trick: '🎩 HAT-TRICK',
     scored_equaliser: 'EQUALISER',
     assisted:         'ASSIST',
     potm:             'PLAYER OF THE MATCH',
@@ -172,6 +194,14 @@ window.Game.Screens.PlayerMoment = (function () {
       "That's two from {name}. Impossible to stop today.",
       "{name} scores twice and the fans are on their feet.",
       "A brace for {name}. The performance of the season so far.",
+    ],
+    scored_hat_trick: [
+      "Hat-trick hero! {name} with three goals today.",
+      "{name} completes the hat-trick. History made at Nordstrom Park.",
+      "Three goals from {name}. A moment nobody in that stadium will ever forget.",
+      "The hat-trick is complete! {name} is absolutely unstoppable.",
+      "{name} scores three. The crowd haven't stopped singing.",
+      "Three. Goals. {name} puts on a show for the ages.",
     ],
     scored_equaliser: [
       "{name} pulls Valhalla level. We're back in this!",

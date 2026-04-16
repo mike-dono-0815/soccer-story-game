@@ -67,6 +67,51 @@ window.Game.Screens.LeagueRounds = (function () {
 
   // ── Render ───────────────────────────────────────────────────
 
+  // Timing constants (ms)
+  const PLAY_MS    = 1700;  // "playing…" phase before result is revealed
+  const REVEAL_GAP = 500;   // pause after result before next game starts
+
+  function buildResultRow(r) {
+    const row = document.createElement('div');
+    row.className = `lr-result-row ${r.outcome}`;
+    if (r.events) row.classList.add('lr-result-tappable');
+
+    const badge = document.createElement('div');
+    badge.className = `lr-result-badge ${r.outcome}`;
+    badge.textContent = r.outcome === 'win' ? 'W' : r.outcome === 'draw' ? 'D' : 'L';
+
+    const info = document.createElement('div');
+    info.className = 'lr-result-info';
+
+    const opp = document.createElement('div');
+    opp.className = 'lr-result-opp';
+    const valLabel = r.valPos ? `FC Valhalla (P${r.valPos})` : 'FC Valhalla';
+    const oppLabel = r.oppPos ? `${r.opponent} (P${r.oppPos})` : r.opponent;
+    opp.textContent = r.homeAway === 'home'
+      ? `${valLabel} – ${oppLabel}`
+      : `${oppLabel} – ${valLabel}`;
+    info.appendChild(opp);
+
+    if (r.events) {
+      const tap = document.createElement('div');
+      tap.className = 'lr-result-tap-hint';
+      tap.textContent = 'Tap for details';
+      info.appendChild(tap);
+    }
+
+    const scoreEl = document.createElement('div');
+    scoreEl.className = 'lr-result-score';
+    scoreEl.textContent = r.homeAway === 'home'
+      ? `${r.valGoals}–${r.oppGoals}`
+      : `${r.oppGoals}–${r.valGoals}`;
+
+    row.appendChild(badge);
+    row.appendChild(info);
+    row.appendChild(scoreEl);
+
+    return row;
+  }
+
   function show(results, onDone) {
     if (!results || results.length === 0) { onDone(); return; }
 
@@ -87,9 +132,9 @@ window.Game.Screens.LeagueRounds = (function () {
     const screen = document.createElement('div');
     screen.className = 'screen-league-rounds screen-enter';
 
-    // Tap hint
+    // Tap hint (hidden until all results shown)
     const hint = document.createElement('div');
-    hint.className = 'scene-tap-hint';
+    hint.className = 'scene-tap-hint lr-hint-hidden';
     hint.textContent = 'tap anywhere to continue';
     screen.appendChild(hint);
 
@@ -112,59 +157,11 @@ window.Game.Screens.LeagueRounds = (function () {
     // Results list (scrollable)
     const resultsList = document.createElement('div');
     resultsList.className = 'lr-results';
-
-    results.forEach(r => {
-      const row = document.createElement('div');
-      row.className = `lr-result-row ${r.outcome}`;
-      if (r.events) row.classList.add('lr-result-tappable');
-
-      const badge = document.createElement('div');
-      badge.className = `lr-result-badge ${r.outcome}`;
-      badge.textContent = r.outcome === 'win' ? 'W' : r.outcome === 'draw' ? 'D' : 'L';
-
-      const info = document.createElement('div');
-      info.className = 'lr-result-info';
-
-      const opp = document.createElement('div');
-      opp.className = 'lr-result-opp';
-      opp.textContent = (r.homeAway === 'home' ? 'vs ' : '@ ') + r.opponent;
-      info.appendChild(opp);
-
-      if (r.events) {
-        const tap = document.createElement('div');
-        tap.className = 'lr-result-tap-hint';
-        tap.textContent = 'Tap for details';
-        info.appendChild(tap);
-      }
-
-      // Show as home score – away score (Valhalla perspective)
-      const scoreEl = document.createElement('div');
-      scoreEl.className = 'lr-result-score';
-      scoreEl.textContent = r.homeAway === 'home'
-        ? `${r.valGoals}–${r.oppGoals}`
-        : `${r.oppGoals}–${r.valGoals}`;
-
-      row.appendChild(badge);
-      row.appendChild(info);
-      row.appendChild(scoreEl);
-
-      if (r.events) {
-        const onTap = e => {
-          e.stopPropagation();
-          showMatchDetail(r, screen);
-        };
-        row.addEventListener('click', onTap);
-        row.addEventListener('touchend', e => { e.preventDefault(); onTap(e); }, { passive: false });
-      }
-
-      resultsList.appendChild(row);
-    });
-
     screen.appendChild(resultsList);
 
-    // Summary + narrative
+    // Summary + narrative (hidden until all revealed)
     const summary = document.createElement('div');
-    summary.className = 'lr-summary';
+    summary.className = 'lr-summary lr-hint-hidden';
 
     const record = document.createElement('div');
     record.className = 'lr-record';
@@ -180,12 +177,11 @@ window.Game.Screens.LeagueRounds = (function () {
       narr.textContent = narrative;
       summary.appendChild(narr);
     }
-
     screen.appendChild(summary);
 
-    // Footer
+    // Footer (hidden until all revealed)
     const footer = document.createElement('div');
-    footer.className = 'lr-footer';
+    footer.className = 'lr-footer lr-hint-hidden';
     const btn = document.createElement('button');
     btn.className = 'btn-primary';
     btn.textContent = 'Next Match';
@@ -200,17 +196,121 @@ window.Game.Screens.LeagueRounds = (function () {
     root.innerHTML = '';
     root.appendChild(div);
 
-    // Also allow tap-anywhere to dismiss
+    // ── Sequential reveal ──────────────────────────────────────
     let dismissed = false;
     function dismiss() {
       if (dismissed) return;
-      // Only dismiss if they tapped the screen background, not the button
       dismissed = true;
       screen.classList.add('screen-exit');
       setTimeout(() => { div.remove(); onDone(); }, 300);
     }
-    screen.addEventListener('click', e => {
-      if (e.target === screen || e.target === hint || e.target === resultsList) dismiss();
+
+    const timers = [];
+
+    function revealAll() {
+      // Skip straight to fully-revealed state
+      timers.forEach(clearTimeout);
+      resultsList.innerHTML = '';
+      results.forEach(r => {
+        const row = buildResultRow(r);
+        row.classList.add('lr-row-enter');
+        if (r.events) {
+          const onTap = e => { e.stopPropagation(); showMatchDetail(r, screen); };
+          row.addEventListener('click', onTap);
+          row.addEventListener('touchend', e => { e.preventDefault(); onTap(e); }, { passive: false });
+        }
+        resultsList.appendChild(row);
+      });
+      hint.classList.remove('lr-hint-hidden');
+      summary.classList.remove('lr-hint-hidden');
+      footer.classList.remove('lr-hint-hidden');
+    }
+
+    // Sequence: for each game, show a "playing" placeholder, then flip to result
+    results.forEach((r, i) => {
+      const gameStart = i * (PLAY_MS + REVEAL_GAP);
+
+      // Phase 1: add the "playing" placeholder row
+      const t1 = setTimeout(() => {
+        const placeholder = document.createElement('div');
+        placeholder.className = 'lr-result-row lr-row-playing lr-row-enter';
+        placeholder.dataset.idx = i;
+
+        const spinBadge = document.createElement('div');
+        spinBadge.className = 'lr-result-badge lr-badge-playing';
+        spinBadge.textContent = '⚽';
+
+        const info = document.createElement('div');
+        info.className = 'lr-result-info';
+        const oppEl = document.createElement('div');
+        oppEl.className = 'lr-result-opp';
+        const preValLabel = r.preValPos ? `FC Valhalla (P${r.preValPos})` : 'FC Valhalla';
+        const preOppLabel = r.preOppPos ? `${r.opponent} (P${r.preOppPos})` : r.opponent;
+        oppEl.textContent = `Round ${r.round} · ` + (r.homeAway === 'home'
+          ? `${preValLabel} – ${preOppLabel}`
+          : `${preOppLabel} – ${preValLabel}`);
+        info.appendChild(oppEl);
+        const statusEl = document.createElement('div');
+        statusEl.className = 'lr-playing-status';
+        statusEl.textContent = 'playing\u2026';
+        info.appendChild(statusEl);
+
+        const scoreEl = document.createElement('div');
+        scoreEl.className = 'lr-result-score lr-score-playing';
+        scoreEl.textContent = '–';
+
+        placeholder.appendChild(spinBadge);
+        placeholder.appendChild(info);
+        placeholder.appendChild(scoreEl);
+        resultsList.appendChild(placeholder);
+        resultsList.scrollTop = resultsList.scrollHeight;
+      }, gameStart);
+      timers.push(t1);
+
+      // Phase 2: replace placeholder with the real result row
+      const t2 = setTimeout(() => {
+        const placeholder = resultsList.querySelector(`[data-idx="${i}"]`);
+        if (!placeholder) return;
+
+        const row = buildResultRow(r);
+        row.classList.add('lr-row-reveal');
+        if (r.events) {
+          const onTap = e => { e.stopPropagation(); showMatchDetail(r, screen); };
+          row.addEventListener('click', onTap);
+          row.addEventListener('touchend', e => { e.preventDefault(); onTap(e); }, { passive: false });
+        }
+        placeholder.replaceWith(row);
+        resultsList.scrollTop = resultsList.scrollHeight;
+      }, gameStart + PLAY_MS);
+      timers.push(t2);
+    });
+
+    // Phase 3: after last result revealed, show summary + footer
+    const allDone = results.length * (PLAY_MS + REVEAL_GAP) - REVEAL_GAP + PLAY_MS + 400;
+    const t3 = setTimeout(() => {
+      hint.classList.remove('lr-hint-hidden');
+      summary.classList.remove('lr-hint-hidden');
+      footer.classList.remove('lr-hint-hidden');
+      // Enable tap-to-dismiss now
+      screen.addEventListener('click', e => {
+        if (e.target === screen || e.target === hint || e.target === resultsList) dismiss();
+      });
+    }, allDone);
+    timers.push(t3);
+
+    // Tapping during the sequence skips to full reveal
+    screen.addEventListener('click', function skipHandler(e) {
+      if (hint.classList.contains('lr-hint-hidden')) {
+        // Still in sequence — skip to full reveal
+        screen.removeEventListener('click', skipHandler);
+        revealAll();
+        hint.classList.remove('lr-hint-hidden');
+        summary.classList.remove('lr-hint-hidden');
+        footer.classList.remove('lr-hint-hidden');
+        screen.addEventListener('click', e2 => {
+          if (e2.target === screen || e2.target === hint || e2.target === resultsList) dismiss();
+        });
+      }
     });
   }
 

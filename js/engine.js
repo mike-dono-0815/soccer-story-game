@@ -432,28 +432,195 @@ window.Game.Engine = (function () {
     Screens.Hub.render(nextLabel, nextDetail);
   }
 
-  function getEventLabel(event) {
-    if (event.calendarLabel) return event.calendarLabel;
-    if (event.type === 'match') return `vs. ${event.opponent}`;
-    return event.id.replace(/_/g, ' ');
+  // Story match opponent name → VPL table team ID (only teams that exist in the simulated league)
+  const OPP_TO_TEAM_ID = {
+    'Red Storm FC':        'redstorm',
+    'Castello FC':         'castello',
+    'Ironclad United':     'ironclad',
+    'Northern Stars FC':   'northstars',
+    'Red Cliffs Athletic': 'redcliffs',
+    'Ironport City':       'ironport',
+  };
+
+  function _currentTable() {
+    const state = State.get();
+    if (!state.league || !state.league.fixtures || state.league.round < 1) return null;
+    return window.Game.LeagueSim.computeTable(state.league.fixtures, state.league.round);
   }
 
-  // Story match opponent name → VPL table team ID (only for teams that exist in the simulated league)
-  const OPP_TO_TEAM_ID = {
-    'Ironclad United':    'ironclad',
-    'Red Cliffs Athletic': 'redcliffs',
-    'Holbrook Rangers':   'holbrook',
-    'Northgate City':     'northgate',
-  };
+  function _valhallaLeaguePosition() {
+    const table = _currentTable();
+    if (!table) return null;
+    const idx = table.findIndex(t => t.id === 'valhalla');
+    return idx >= 0 ? idx + 1 : null;
+  }
 
   function _oppLeaguePosition(opponentName) {
     const teamId = OPP_TO_TEAM_ID[opponentName];
     if (!teamId) return null;
-    const state = State.get();
-    if (!state.league || !state.league.fixtures || state.league.round < 1) return null;
-    const table = window.Game.LeagueSim.computeTable(state.league.fixtures, state.league.round);
+    const table = _currentTable();
+    if (!table) return null;
     const idx = table.findIndex(row => row.id === teamId);
     return idx >= 0 ? idx + 1 : null;
+  }
+
+  function _fixtureLabel(event) {
+    const isHome = event.homeAway === 'home';
+    const opp    = event.opponent || 'Opponent';
+    const valPos = _valhallaLeaguePosition();
+    const oppPos = _oppLeaguePosition(opp);
+    const valLabel = valPos ? `FC Valhalla (P${valPos})` : 'FC Valhalla';
+    const oppLabel = oppPos ? `${opp} (P${oppPos})` : opp;
+    return isHome ? `${valLabel} – ${oppLabel}` : `${oppLabel} – ${valLabel}`;
+  }
+
+  // Returns a prefix string for the final VPL game based on league position
+  function _titleDeciderPrefix() {
+    const table = _currentTable();
+    if (!table) return 'Season Finale';
+    const valIdx = table.findIndex(t => t.id === 'valhalla');
+    if (valIdx < 0) return 'Season Finale';
+    const vPts   = table[valIdx].pts;
+    const t1pts  = table[0].pts;
+    if (t1pts - vPts <= 3) return 'Title Decider';
+    const t2pts  = table.length > 1 ? table[1].pts : vPts;
+    if (t2pts - vPts <= 3) return 'Champions Cup Place';
+    const t5pts  = table.length > 4 ? table[4].pts : vPts;
+    if (t5pts - vPts <= 3) return 'Europa Place';
+    return 'Season Finale';
+  }
+
+  // Returns a copy of the title-decider scene with dynamic transition text
+  function _patchTitleDecider(scene) {
+    const prefix = _titleDeciderPrefix();
+    const texts = {
+      'Title Decider':       "Final day. The title is still within reach — three points could make Valhalla champions. The ground is sold out. It has been for weeks.",
+      'Champions Cup Place': "Final day. A top-two finish and a place in Europe's biggest competition is still alive. Win and Valhalla go to the Champions Cup next season.",
+      'Europa Place':        "Final day. A Europa Cup place is still in play. Win and the season ends with continental football secured. Not a title campaign — but far from nothing.",
+      'Season Finale':       "Final day of the season. The table has already given its verdict. The city turns out anyway — because this is still Valhalla, and it's still football.",
+    };
+    return Object.assign({}, scene, {
+      transition: Object.assign({}, scene.transition, { text: texts[prefix] }),
+    });
+  }
+
+  // Returns how many competitions Valhalla is still alive in at the locker-room point
+  function _activeCups() {
+    const r = (State.get().results) || {};
+    return {
+      fa:       r.faRound       === 'final',
+      champ:    r.championsRound === 'final',
+    };
+  }
+
+  function _patchLockerRoom(scene) {
+    const { fa, champ } = _activeCups();
+    let prompt;
+    if (fa && champ) {
+      prompt = '"Crunch time — three competitions still alive. The squad is tired. What\'s your message in the dressing room?"';
+    } else if (fa) {
+      prompt = '"Crunch time — the league title and an FA Cup Final still to play. The squad is tired. What\'s your message in the dressing room?"';
+    } else if (champ) {
+      prompt = '"Crunch time — the league title and a Champions Cup Final still to play. The squad is tired. What\'s your message in the dressing room?"';
+    } else {
+      prompt = '"Crunch time — everything now riding on the league run-in. The squad is tired. What\'s your message in the dressing room?"';
+    }
+    return Object.assign({}, scene, { prompt });
+  }
+
+  function _patchSecondHalfReview(scene) {
+    const { fa, champ } = _activeCups();
+    let line;
+    if (fa && champ) {
+      line = '"Three competitions. One squad. This is your legacy, Gaffer."';
+    } else if (fa) {
+      line = '"The league title and an FA Cup Final. Two chances at glory, Gaffer."';
+    } else if (champ) {
+      line = '"The league title and a Champions Cup Final. Two chances at history, Gaffer."';
+    } else {
+      line = '"The league run-in. This is where legacies are made, Gaffer."';
+    }
+    const dialogue = scene.dialogue.map((d, i) => i === 2 ? line : d);
+    return Object.assign({}, scene, { dialogue });
+  }
+
+  function _patchBoardPressure(scene) {
+    const pos = _valhallaLeaguePosition() || 9;
+    const posStr = Utils.ordinal(pos);
+
+    let tier;
+    if (pos === 1)      tier = 'elite';
+    else if (pos <= 4)  tier = 'good';
+    else if (pos <= 9)  tier = 'mid';
+    else if (pos <= 15) tier = 'worried';
+    else                tier = 'danger';
+
+    const TIERS = {
+      elite: {
+        transitionText: "Paulo waves you in without looking up. He has the league table on his desk. He circles your position — first — and looks up with something you haven't seen from him before. A smile.",
+        prompt: '"Top of the table. I\'ll be honest: I didn\'t dare dream this by January. How do we keep it there?"',
+        choices: [
+          { label: '"We win the title. Simple as that."',             hint: 'Paulo grins. The room feels lighter.' },
+          { label: '"One game at a time. We won\'t get carried away."', hint: 'Smart and steady. He respects it.' },
+          { label: '"Back me in the window and we\'ll win it by a mile."', hint: 'Paulo loves the ambition. He adds £2M to the budget.' },
+        ],
+      },
+      good: {
+        transitionText: "Paulo waves you in without looking up. He has the league table on his desk. He circles your position and taps it twice. 'Sit down,' he says.",
+        prompt: `"${posStr} in the table — in the mix for the top places. Good. Now tell me: how do we go higher?"`,
+        choices: [
+          { label: '"We\'re pushing for the title. Not just Europe."', hint: 'Ambitious. Paulo raises an eyebrow — impressed.' },
+          { label: '"Solid foundation. We push harder in the second half."', hint: 'Measured and credible. He nods.' },
+          { label: '"Back me in the window and we close that gap."', hint: 'Paulo likes decisiveness. He adds £2M to the budget.' },
+        ],
+      },
+      mid: {
+        transitionText: "Paulo waves you in without looking up. He has the league table on his desk, a red pen in his hand. He circles something — your position — then looks at you.",
+        prompt: `"${posStr} — right in the middle of the pack. I expected better by now. What\'s your plan?"`,
+        choices: [
+          { label: '"We\'re building momentum. Trust the process."', hint: 'Buys goodwill — but Paulo\'s patience is thinning.' },
+          { label: '"A tough run of fixtures. The squad is improving."', hint: 'Factual. Paulo accepts it — for now.' },
+          { label: '"Give me the transfer budget and we move up."', hint: 'Paulo likes decisiveness. He adds £2M to the budget.' },
+        ],
+      },
+      worried: {
+        transitionText: "Paulo waves you in without looking up. He has the league table on his desk, a red pen in his hand. He circles something — your position — and underlines it. Twice.",
+        prompt: `"${posStr}. That\'s not good enough. We built this club for the top half. I need a proper explanation."`,
+        choices: [
+          { label: '"We\'re turning it around. Give me three more games."', hint: 'Paulo stares. He gives it — just about.' },
+          { label: '"Injuries and tough fixtures. We\'re adapting."', hint: 'A weaker answer than he wanted. He notes it.' },
+          { label: '"Give me the transfer budget and we fix this now."', hint: 'Paulo adds £2M. He needs results as much as you do.' },
+        ],
+      },
+      danger: {
+        transitionText: "Paulo waves you in without looking up. He has the league table on his desk, a red pen in his hand. He circles your position — near the bottom — and throws the pen down.",
+        prompt: `"${posStr}. That\'s relegation territory. I need answers and I need them right now."`,
+        choices: [
+          { label: '"Results come or I walk. You have my word."', hint: 'Paulo pauses. He didn\'t expect that. Gives you the window.' },
+          { label: '"The squad has been hit hard. We\'re not done."', hint: 'A plea. Paulo looks unconvinced but holds off.' },
+          { label: '"Back me in the window — that\'s how we survive."', hint: 'Survival mode. Paulo adds £2M. He\'s desperate too.' },
+        ],
+      },
+    };
+
+    const d = TIERS[tier];
+    return Object.assign({}, scene, {
+      transition: Object.assign({}, scene.transition, { text: d.transitionText }),
+      prompt: d.prompt,
+      choices: scene.choices.map((c, i) => Object.assign({}, c, {
+        label: d.choices[i] ? d.choices[i].label : c.label,
+        hint:  d.choices[i] ? d.choices[i].hint  : c.hint,
+      })),
+    });
+  }
+
+  function getEventLabel(event) {
+    if (event.id === 'match_title_decider') {
+      return _titleDeciderPrefix() + ' · ' + _fixtureLabel(event);
+    }
+    if (event.calendarLabel) return event.calendarLabel;
+    if (event.type === 'match') return _fixtureLabel(event);
+    return event.id.replace(/_/g, ' ');
   }
 
   function getEventDetail(event) {
@@ -462,15 +629,11 @@ window.Game.Engine = (function () {
 
       if (isVPL) {
         const round = window.Game.LeagueSim.SCENE_TO_ROUND[event.id];
-        const venue = event.homeAway === 'home' ? 'Home' : 'Away';
-        let detail = round ? `VPL · Round ${round} of 34 · ${venue}` : `VPL League · ${venue}`;
-        const pos = _oppLeaguePosition(event.opponent);
-        if (pos) detail += ` · Opponent currently ${window.Game.Utils.ordinal(pos)}`;
-        return detail;
+        return round ? `VPL · Round ${round} of 34` : 'VPL League';
       }
 
       // Cup / other competitions — show competition + venue
-      const comp = event.competition || 'VPL';
+      const comp  = event.competition || 'VPL';
       const venue = event.homeAway === 'home' ? 'Home' : event.homeAway === 'away' ? 'Away' : 'Neutral';
       return `${comp} · ${venue}`;
     }
@@ -482,6 +645,12 @@ window.Game.Engine = (function () {
   // Route a scene to the correct screen
   function routeScene(scene) {
     if (!scene) return;
+
+    // Dynamic patching for context-sensitive scenes
+    if (scene.id === 'match_title_decider')  scene = _patchTitleDecider(scene);
+    if (scene.id === 'locker_room_talk')     scene = _patchLockerRoom(scene);
+    if (scene.id === 'second_half_review')   scene = _patchSecondHalfReview(scene);
+    if (scene.id === 'board_pressure_1')     scene = _patchBoardPressure(scene);
 
     // Match scenes: context screens → lineup → match
     if (scene.type === 'match') {
@@ -553,6 +722,9 @@ window.Game.Engine = (function () {
       const short = r.outcome === 'win' ? 'W' : r.outcome === 'draw' ? 'D' : 'L';
       state.results.lastResults.push(short);
       if (state.results.lastResults.length > 10) state.results.lastResults.shift();
+      if (!state.results.lastResultDetails) state.results.lastResultDetails = [];
+      state.results.lastResultDetails.push({ opponent: r.opponent || '', vGoals: r.valGoals, oGoals: r.oppGoals, competition: 'VPL' });
+      if (state.results.lastResultDetails.length > 10) state.results.lastResultDetails.shift();
 
       // Record per-player stats for simulated matches
       if (r.events) {
@@ -836,9 +1008,163 @@ window.Game.Engine = (function () {
 
     screen.appendChild(stats);
 
+    const continueBtn = document.createElement('button');
+    continueBtn.className = 'btn-primary';
+    continueBtn.style.maxWidth = '300px';
+    continueBtn.textContent = 'Continue →';
+    continueBtn.addEventListener('click', () => renderSackingEpilogue(endingKey));
+    continueBtn.addEventListener('touchend', e => {
+      e.preventDefault();
+      renderSackingEpilogue(endingKey);
+    }, { passive: false });
+    screen.appendChild(continueBtn);
+
+    div.appendChild(screen);
+
+    const root = document.getElementById('game-root');
+    root.innerHTML = '';
+    root.appendChild(div);
+  }
+
+  // ============================================================
+  // SACKING EPILOGUE — the final joke screen
+  // ============================================================
+
+  // Five tiers of sarcasm, keyed to how well you did.
+  const SACKING_TIERS = {
+    // Won VPL + at least one major cup
+    glory: {
+      salutation: 'Dear {name},',
+      body: [
+        'The double. The VPL title. The cup. The sold-out stadium. The standing ovations.',
+        'We\'ve decided to let you go.',
+        'It\'s not you. It\'s football. No job is ever guaranteed in this game — not even after a season like that. Especially not after a season like that, actually. The board felt the team needed "new energy". The new energy earns twenty percent less than you.',
+        'Your replacement has already been photographed holding the scarf.',
+      ],
+      signoff: 'With the deepest respect and zero self-awareness,',
+    },
+    // Won VPL only
+    league_champion: {
+      salutation: 'Dear {name},',
+      body: [
+        'League champions. First title in eleven years. The city was in the streets.',
+        'You\'re sacked.',
+        'The board considered keeping you on. They really did. Then someone mentioned a bigger name was available for slightly less money, and — well — you know how it goes.',
+        'The trophy stays. You don\'t. Such is football.',
+      ],
+      signoff: 'With warm regards and a cardboard box,',
+    },
+    // Won a cup but not the league, or chose to walk away
+    cup_or_walkaway: {
+      salutation: 'Dear {name},',
+      body: [
+        'What a run. What a cup campaign. What a night at Wembley.',
+        'Unfortunately, the board has determined that cup success — while extremely good for merchandise sales — does not constitute the full picture. The full picture, they feel, required a top-four league finish.',
+        'You did not provide a top-four league finish.',
+        'You are, therefore, sacked. But please do keep the winners\' medal. It\'s yours. We\'re not animals.',
+      ],
+      signoff: 'All the best (and we mean that, sort of),',
+    },
+    // Honourable failure — fought hard, no trophies
+    honourable: {
+      salutation: 'Dear {name},',
+      body: [
+        'No trophies. No titles. A league position that was... fine.',
+        'The fans sang your name on the last day. That counts for something. Just not enough to keep your job.',
+        'The club would like to thank you for your efforts and your professionalism. The club would also like their car parking pass back.',
+        'Football is a cruel business. You always knew that. You told everyone that, actually. Several times. In press conferences.',
+      ],
+      signoff: 'Best wishes and don\'t take it personally (it\'s a little bit personal),',
+    },
+    // Terrible — deserved it
+    deserved: {
+      salutation: 'Dear {name},',
+      body: [
+        'You have been sacked.',
+        'This is not a surprise to anyone. Not to the board. Not to the players. Not to the groundskeeper. Not to Sandra, who runs the pie stand behind the south stand and has been calling for your head since October.',
+        'The results were not there. The performances were not there. On one occasion, you appeared to not be entirely there yourself.',
+        'Go back to your pub. Shout at the television. It is where your talents lie. It is where, perhaps, they have always lain.',
+        'Do not apply again.',
+      ],
+      signoff: 'Warmly (and we use that word loosely),',
+    },
+  };
+
+  function renderSackingEpilogue(endingKey) {
+    const state  = State.get();
+    const r      = state.results;
+    const name   = state.meta.managerName || 'The Gaffer';
+    const titles = r.competitionWins || [];
+    const hasVPL = titles.some(t => t.includes('VPL') || t.includes('League'));
+    const hasCup = titles.some(t => !t.includes('VPL') && !t.includes('League'));
+
+    // Pick tier
+    let tierKey;
+    if (endingKey === 'glory')                     tierKey = 'glory';
+    else if (endingKey === 'league_champion')      tierKey = 'league_champion';
+    else if (endingKey === 'underdog_cup')         tierKey = 'cup_or_walkaway';
+    else if (endingKey === 'walk_away')            tierKey = 'cup_or_walkaway';
+    else if (endingKey === 'youth_revolution' ||
+             endingKey === 'legendary_failure')    tierKey = 'honourable';
+    else                                           tierKey = 'deserved'; // sacked, mid-season, fallback
+
+    const tier = SACKING_TIERS[tierKey];
+
+    const div = document.createElement('div');
+    div.className = 'game-container';
+
+    const screen = document.createElement('div');
+    screen.className = 'screen-sacking screen-enter';
+
+    // "Official Notice" badge
+    const badge = document.createElement('div');
+    badge.className = 'sacking-badge';
+    badge.textContent = '📋 OFFICIAL CLUB NOTICE';
+    screen.appendChild(badge);
+
+    // Final screen illustration
+    const finalImg = document.createElement('img');
+    finalImg.src = 'FinalScreen.png';
+    finalImg.className = 'sacking-image';
+    finalImg.alt = '';
+    screen.appendChild(finalImg);
+
+    // Letter card
+    const letter = document.createElement('div');
+    letter.className = 'sacking-letter';
+
+    const salutation = document.createElement('p');
+    salutation.className = 'sacking-salutation';
+    salutation.textContent = tier.salutation.replace('{name}', name);
+    letter.appendChild(salutation);
+
+    tier.body.forEach(para => {
+      const p = document.createElement('p');
+      p.className = 'sacking-para';
+      p.textContent = para;
+      letter.appendChild(p);
+    });
+
+    const signoffEl = document.createElement('p');
+    signoffEl.className = 'sacking-signoff';
+    signoffEl.textContent = tier.signoff;
+    letter.appendChild(signoffEl);
+
+    const sig = document.createElement('p');
+    sig.className = 'sacking-sig';
+    sig.textContent = 'Paulo Ferretti';
+    letter.appendChild(sig);
+
+    const sigRole = document.createElement('p');
+    sigRole.className = 'sacking-sig-role';
+    sigRole.textContent = 'Chairman, FC Valhalla';
+    letter.appendChild(sigRole);
+
+    screen.appendChild(letter);
+
+    // Play Again
     const playAgainBtn = document.createElement('button');
-    playAgainBtn.className = 'btn-primary';
-    playAgainBtn.style.maxWidth = '300px';
+    playAgainBtn.className = 'btn-primary sacking-play-again';
     playAgainBtn.textContent = 'Play Again';
     playAgainBtn.addEventListener('click', () => {
       State.reset();
@@ -882,6 +1208,9 @@ window.Game.Engine = (function () {
     },
     showAllEndings: function () {
       console.log('Endings: glory, league_champion, underdog_cup, sacked, walk_away, youth_revolution, legendary_failure');
+    },
+    sacking: function (key) {
+      renderSackingEpilogue(key || 'glory');
     },
   };
 

@@ -112,8 +112,37 @@ window.Game.Screens.Calendar = (function () {
     return '📖';
   }
 
+  const CAL_OPP_IDS = {
+    'Red Storm FC':        'redstorm',
+    'Castello FC':         'castello',
+    'Ironclad United':     'ironclad',
+    'Northern Stars FC':   'northstars',
+    'Red Cliffs Athletic': 'redcliffs',
+  };
+
   function getEventLabel(ev) {
-    if (ev.type === 'match') return `vs. ${ev.opponent || 'Opponent'}`;
+    if (ev.type === 'match') {
+      const isHome = ev.homeAway === 'home';
+      const opp    = ev.opponent || 'Opponent';
+
+      // Look up current table positions (only available once season has started)
+      let valPos = null, oppPos = null;
+      const state = window.Game.State.get();
+      if (state.league && state.league.fixtures && state.league.round >= 1) {
+        const table = window.Game.LeagueSim.computeTable(state.league.fixtures, state.league.round);
+        const vi = table.findIndex(t => t.id === 'valhalla');
+        if (vi >= 0) valPos = vi + 1;
+        const oppId = CAL_OPP_IDS[opp];
+        if (oppId) {
+          const oi = table.findIndex(t => t.id === oppId);
+          if (oi >= 0) oppPos = oi + 1;
+        }
+      }
+
+      const valLabel = valPos ? `FC Valhalla (P${valPos})` : 'FC Valhalla';
+      const oppLabel = oppPos ? `${opp} (P${oppPos})` : opp;
+      return isHome ? `${valLabel} – ${oppLabel}` : `${oppLabel} – ${valLabel}`;
+    }
     return ev.calendarLabel || ev.id.replace(/_/g, ' ');
   }
 

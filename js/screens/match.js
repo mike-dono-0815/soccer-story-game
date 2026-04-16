@@ -12,7 +12,7 @@ window.Game.Screens.Match = (function () {
     const state = State.get();
 
     const result = calcOutcome(scene, state);
-    State.recordResult(scene.competition || 'VPL', result.outcome, scene.id, result.homeGoals, result.awayGoals);
+    State.recordResult(scene.competition || 'VPL', result.outcome, scene.id, result.homeGoals, result.awayGoals, scene.opponent, scene.homeAway === 'home');
     if (scene.isFinal && result.outcome === 'win') State.addCompetitionWin(scene.competition);
     State.save();
 

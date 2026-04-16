@@ -19,11 +19,11 @@ window.Game.Screens.League = (function () {
     const round  = league ? league.round : 0;
     const playerStats = state.playerStats || {};
 
-    const table = (league && league.fixtures && round > 0)
+    const table = (league && league.fixtures)
       ? LeagueSim.computeTable(league.fixtures, round)
       : null;
 
-    const valhallaPos = table
+    const valhallaPos = (table && round > 0)
       ? table.findIndex(r => r.id === 'valhalla') + 1
       : null;
 
@@ -49,7 +49,7 @@ window.Game.Screens.League = (function () {
     titleEl.textContent = 'VPL';
     const subtitleEl = document.createElement('div');
     subtitleEl.className = 'league-subtitle';
-    subtitleEl.textContent = round > 0 ? `After Round ${round} of 34` : 'Season not started';
+    subtitleEl.textContent = round > 0 ? `After Round ${round} of 34` : 'Pre-season standings';
     titleWrap.appendChild(titleEl);
     titleWrap.appendChild(subtitleEl);
     header.appendChild(titleWrap);
@@ -72,8 +72,12 @@ window.Game.Screens.League = (function () {
     const statsTabBtn = document.createElement('button');
     statsTabBtn.className = 'screen-tab-btn';
     statsTabBtn.textContent = 'Stats';
+    const resultsTabBtn = document.createElement('button');
+    resultsTabBtn.className = 'screen-tab-btn';
+    resultsTabBtn.textContent = 'Results';
     tabs.appendChild(tableTabBtn);
     tabs.appendChild(statsTabBtn);
+    tabs.appendChild(resultsTabBtn);
     div.appendChild(tabs);
 
     // ── Table Pane ───────────────────────────────────────────
@@ -86,7 +90,7 @@ window.Game.Screens.League = (function () {
     if (!table) {
       const empty = document.createElement('div');
       empty.className = 'league-empty';
-      empty.textContent = 'The season hasn\'t kicked off yet. Check back after the first match day.';
+      empty.textContent = 'League data not available yet.';
       tableBody.appendChild(empty);
     } else {
       // Column header
@@ -172,19 +176,30 @@ window.Game.Screens.League = (function () {
     buildStatsTable(statsScroll, state.squad, playerStats, true);
     div.appendChild(statsPane);
 
+    // ── Results Pane ─────────────────────────────────────────
+    const resultsPane = document.createElement('div');
+    resultsPane.className = 'tab-pane hidden';
+    buildResultsPane(resultsPane, league, round);
+    div.appendChild(resultsPane);
+
     // ── Tab Switching ────────────────────────────────────────
-    function switchTab(showStats) {
-      tableTabBtn.classList.toggle('active', !showStats);
-      statsTabBtn.classList.toggle('active', showStats);
-      tablePane.classList.toggle('hidden', showStats);
-      statsPane.classList.toggle('hidden', !showStats);
+    function switchTab(active) {
+      tableTabBtn.classList.toggle('active',   active === 'table');
+      statsTabBtn.classList.toggle('active',   active === 'stats');
+      resultsTabBtn.classList.toggle('active', active === 'results');
+      tablePane.classList.toggle('hidden',   active !== 'table');
+      statsPane.classList.toggle('hidden',   active !== 'stats');
+      resultsPane.classList.toggle('hidden', active !== 'results');
     }
-    const onTable = () => switchTab(false);
-    const onStats  = () => switchTab(true);
+    const onTable   = () => switchTab('table');
+    const onStats   = () => switchTab('stats');
+    const onResults = () => switchTab('results');
     tableTabBtn.addEventListener('click', onTable);
     tableTabBtn.addEventListener('touchend', e => { e.preventDefault(); onTable(); }, { passive: false });
     statsTabBtn.addEventListener('click', onStats);
     statsTabBtn.addEventListener('touchend', e => { e.preventDefault(); onStats(); }, { passive: false });
+    resultsTabBtn.addEventListener('click', onResults);
+    resultsTabBtn.addEventListener('touchend', e => { e.preventDefault(); onResults(); }, { passive: false });
 
     Utils.render(div);
   }
@@ -304,6 +319,65 @@ window.Game.Screens.League = (function () {
     }
 
     refresh();
+  }
+
+  // ── Results Pane builder ─────────────────────────────────
+
+  function buildResultsPane(pane, league, round) {
+    const scroll = document.createElement('div');
+    scroll.className = 'res-scroll';
+
+    if (!league || !league.fixtures || round === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'league-empty';
+      empty.textContent = 'No matches played yet. Check back after the first fixture.';
+      scroll.appendChild(empty);
+      pane.appendChild(scroll);
+      return;
+    }
+
+    const TEAMS = window.Game.LeagueSim.TEAMS;
+
+    for (let r = 1; r <= round; r++) {
+      const roundFixtures = league.fixtures[r - 1];
+      if (!roundFixtures) continue;
+
+      const valMatch = roundFixtures.find(([hi, ai]) => hi === 0 || ai === 0);
+      if (!valMatch) continue;
+
+      const [hi, ai, hg, ag] = valMatch;
+      const isValHome = hi === 0;
+      const vg = isValHome ? hg : ag;
+      const og = isValHome ? ag : hg;
+      const outcome = vg > og ? 'win' : vg < og ? 'loss' : 'draw';
+
+      const hdr = document.createElement('div');
+      hdr.className = 'res-round-hdr';
+      hdr.textContent = `Round ${r}`;
+      scroll.appendChild(hdr);
+
+      const row = document.createElement('div');
+      row.className = `res-match-row res-val ${outcome}`;
+
+      const homeEl = document.createElement('div');
+      homeEl.className = `res-team res-home${isValHome ? ' res-us' : ''}`;
+      homeEl.textContent = TEAMS[hi].name;
+
+      const scoreEl = document.createElement('div');
+      scoreEl.className = `res-score ${outcome}`;
+      scoreEl.textContent = `${hg} – ${ag}`;
+
+      const awayEl = document.createElement('div');
+      awayEl.className = `res-team res-away${!isValHome ? ' res-us' : ''}`;
+      awayEl.textContent = TEAMS[ai].name;
+
+      row.appendChild(homeEl);
+      row.appendChild(scoreEl);
+      row.appendChild(awayEl);
+      scroll.appendChild(row);
+    }
+
+    pane.appendChild(scroll);
   }
 
   return { render };

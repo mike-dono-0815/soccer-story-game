@@ -785,7 +785,10 @@ window.Game.MatchSummary = (function () {
       if (!scored.length && !assisted.length && !isPotm) continue;
 
       let type, detail, scoreStr = null;
-      if (scored.length >= 2) {
+      if (scored.length >= 3) {
+        type = 'scored'; detail = 'hat_trick';
+        scoreStr = scored[scored.length - 1].scoreStr;
+      } else if (scored.length >= 2) {
         type = 'scored'; detail = 'brace';
         scoreStr = scored[scored.length - 1].scoreStr;
       } else if (scored.length === 1) {

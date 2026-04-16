@@ -84,7 +84,8 @@ window.Game.State = (function () {
     results: {
       vplWins: 0, vplDraws: 0, vplLosses: 0,
       vplPosition: 9,
-      lastResults: [],          // last 5: 'W','D','L'
+      lastResults: [],          // last 10: 'W','D','L'
+      lastResultDetails: [],    // parallel: { opponent, vGoals, oGoals, competition }
       cupResult: null,
       championsResult: null,
       worldResult: null,
@@ -113,7 +114,9 @@ window.Game.State = (function () {
       captainId: null,
       starSold: false,
       starInjured: false,
+      starInjuryGamesLeft: 0,
       starTravelling: false,
+      starTravelGamesLeft: 0,
       starRushedBack: false,
       rivalityEscalated: false,
       boardCrisisActive: false,
@@ -268,13 +271,19 @@ window.Game.State = (function () {
         s[key] = val;
       }
     });
-    // Releasing Marco for international duty marks him as travelling
+    // Injuring Marco arms a 3-game countdown
+    if (effects.starInjured === true) {
+      s.starInjuryGamesLeft = 3;
+    }
+    // Releasing Marco for international duty marks him as travelling for 1 game
     if (effects.callupReleased === true) {
       s.starTravelling = true;
+      s.starTravelGamesLeft = 1;
     }
-    // Selling Marco clears the travelling flag too
+    // Selling Marco clears all travel/injury flags
     if (effects.starSold === true) {
       s.starTravelling = false;
+      s.starTravelGamesLeft = 0;
     }
   }
 
@@ -294,7 +303,19 @@ window.Game.State = (function () {
   }
 
   // Record match result. homeGoals/awayGoals are from the actual scoreline.
-  function recordResult(competition, outcome, sceneId, homeGoals, awayGoals) {
+  // opponentName and isHome are optional — used to populate lastResultDetails for hub tooltips.
+  function recordResult(competition, outcome, sceneId, homeGoals, awayGoals, opponentName, isHome) {
+    // Tick down player unavailability after each story match
+    const s = _state.story;
+    if (s.starInjuryGamesLeft > 0) {
+      s.starInjuryGamesLeft--;
+      if (s.starInjuryGamesLeft === 0) s.starInjured = false;
+    }
+    if (s.starTravelGamesLeft > 0) {
+      s.starTravelGamesLeft--;
+      if (s.starTravelGamesLeft === 0) s.starTravelling = false;
+    }
+
     if (competition === 'VPL') {
       if (outcome === 'win')  _state.results.vplWins++;
       if (outcome === 'draw') _state.results.vplDraws++;
@@ -383,10 +404,20 @@ window.Game.State = (function () {
     // Morale effect
     const moraleChange = outcome === 'win' ? 6 : outcome === 'draw' ? 2 : -6;
     _state.story.teamMorale = window.Game.Utils.clamp(_state.story.teamMorale + moraleChange, 0, 100);
-    // Track last 5 results
+    // Track last 10 results
     const short = outcome === 'win' ? 'W' : outcome === 'draw' ? 'D' : 'L';
     _state.results.lastResults.push(short);
     if (_state.results.lastResults.length > 10) _state.results.lastResults.shift();
+    if (!_state.results.lastResultDetails) _state.results.lastResultDetails = [];
+    const vGoals = isHome !== undefined ? (isHome ? homeGoals : awayGoals) : homeGoals;
+    const oGoals = isHome !== undefined ? (isHome ? awayGoals : homeGoals) : awayGoals;
+    _state.results.lastResultDetails.push({
+      opponent: opponentName || '',
+      vGoals: vGoals !== undefined ? vGoals : null,
+      oGoals: oGoals !== undefined ? oGoals : null,
+      competition: competition || 'VPL',
+    });
+    if (_state.results.lastResultDetails.length > 10) _state.results.lastResultDetails.shift();
 
     save();
   }
