@@ -1282,6 +1282,13 @@
   color: var(--gold);
   opacity: 0.2;
 }
+.tac-tray-hint {
+  font-size: 9px;
+  color: var(--text-muted);
+  opacity: 0.55;
+  text-align: center;
+  letter-spacing: 0.03em;
+}
 
 /* --- END TACTICAL CARD TRAY -------------------------------- */
 
@@ -3119,6 +3126,20 @@
   line-height: 1;
   margin-bottom: 20px;
   filter: drop-shadow(0 0 12px rgba(245, 200, 66, 0.45));
+}
+
+.transition-win-img-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.transition-win-img {
+  width: 220px;
+  max-width: 80%;
+  height: auto;
+  border-radius: 12px;
+  filter: drop-shadow(0 4px 16px rgba(0,0,0,0.6));
 }
 
 .transition-location {

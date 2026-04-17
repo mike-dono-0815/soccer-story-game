@@ -1629,6 +1629,12 @@ window.Game.StoryData = (function () {
       next: null, // → next() → cwc_qualify_check
     },
 
+    cwc_final_aftermath: {
+      id: 'cwc_final_aftermath', type: 'cup_aftermath',
+      competition: 'Club World Cup', round: 'Final',
+      next: null, // → next() → league_aftermath
+    },
+
     cwc_out_r16: {
       id: 'cwc_out_r16', type: 'knockout_transition',
       competition: 'Club World Cup', round: 'Round of 16',
@@ -1807,6 +1813,7 @@ window.Game.StoryData = (function () {
     scenes.cwc_qf,                // onLoss → cwc_out_qf (off-spine)
     scenes.cwc_sf,                // onLoss → cwc_out_sf (off-spine)
     scenes.cwc_final,             // onLoss → cwc_out_final (off-spine)
+    scenes.cwc_final_aftermath,   // win OR loss both call next() from cwc_final position
     scenes.league_aftermath,      // dynamic transition: league season reaction
     scenes.season_summary,
     scenes.season_end_eval,

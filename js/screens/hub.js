@@ -47,50 +47,6 @@ window.Game.Screens.Hub = (function () {
 
     div.appendChild(header);
 
-    // Season progress bar
-    const TOTAL_WEEKS = 38;
-    const week = state.progress.seasonWeek;
-    const pct = Math.min(100, week / TOTAL_WEEKS * 100);
-
-    function phaseLabel(w) {
-      if (w === 0)   return 'Pre-Season';
-      if (w <= 12)   return 'Early Season';
-      if (w <= 23)   return 'Mid-Season';
-      if (w <= 30)   return 'Run-In';
-      return 'Final Stretch';
-    }
-
-    const seasonBar = document.createElement('div');
-    seasonBar.className = 'hub-season-bar';
-
-    const seasonBarHeader = document.createElement('div');
-    seasonBarHeader.className = 'hub-season-bar-header';
-    const phaseEl = document.createElement('span');
-    phaseEl.className = 'hub-season-phase';
-    phaseEl.textContent = phaseLabel(week);
-    const weekEl = document.createElement('span');
-    weekEl.className = 'hub-season-week';
-    weekEl.textContent = week === 0 ? 'Kick-off soon' : `Week ${week} of ${TOTAL_WEEKS}`;
-    seasonBarHeader.appendChild(phaseEl);
-    seasonBarHeader.appendChild(weekEl);
-    seasonBar.appendChild(seasonBarHeader);
-
-    const track = document.createElement('div');
-    track.className = 'hub-season-track';
-    const fill = document.createElement('div');
-    fill.className = 'hub-season-fill';
-    fill.style.width = `${pct}%`;
-    track.appendChild(fill);
-    // Phase boundary ticks: league start (~3%), mid-season (~34%), run-in (~63%)
-    [3, 34, 63].forEach(pos => {
-      const tick = document.createElement('div');
-      tick.className = 'hub-season-tick';
-      tick.style.left = `${pos}%`;
-      track.appendChild(tick);
-    });
-    seasonBar.appendChild(track);
-    div.appendChild(seasonBar);
-
     // Body
     const body = document.createElement('div');
     body.className = 'hub-body';
@@ -355,14 +311,6 @@ window.Game.Screens.Hub = (function () {
     squadBtn.addEventListener('click', onSquad);
     squadBtn.addEventListener('touchend', e => { e.preventDefault(); onSquad(); }, { passive: false });
     footer.appendChild(squadBtn);
-
-    const calendarBtn = document.createElement('button');
-    calendarBtn.className = 'hub-btn-icon';
-    calendarBtn.title = 'Season Calendar';
-    calendarBtn.textContent = '📅';
-    calendarBtn.addEventListener('click', () => window.Game.Screens.Calendar.render());
-    calendarBtn.addEventListener('touchend', e => { e.preventDefault(); window.Game.Screens.Calendar.render(); }, { passive: false });
-    footer.appendChild(calendarBtn);
 
     const saveBtn = document.createElement('button');
     saveBtn.className = 'hub-btn-icon';

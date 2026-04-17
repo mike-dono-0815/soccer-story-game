@@ -86,10 +86,7 @@ window.Game.Screens.Match = (function () {
 
     // ── Result label — hidden until simulation ends ──────────────
     const resultLabel = document.createElement('div');
-    resultLabel.className = `match-result-label ${result.outcome}`;
-    resultLabel.textContent = result.outcome === 'win' ? '⚡ VICTORY'
-                            : result.outcome === 'draw' ? '⚖ DRAW'
-                            : '💔 DEFEAT';
+    resultLabel.className = 'match-result-label';
     resultLabel.style.display = 'none';
     content.appendChild(resultLabel);
 
@@ -207,6 +204,12 @@ window.Game.Screens.Match = (function () {
       tacRow.appendChild(cardEl);
     });
     tacTray.appendChild(tacRow);
+
+    const tacHint = document.createElement('div');
+    tacHint.className = 'tac-tray-hint';
+    tacHint.textContent = 'Each card can only be used once per season';
+    tacTray.appendChild(tacHint);
+
     // Insert before the result label inside content
     content.insertBefore(tacTray, resultLabel);
 

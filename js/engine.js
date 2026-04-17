@@ -636,6 +636,7 @@ window.Game.Engine = (function () {
       const won = (r.competitionWins || []).includes('FA Cup');
       if (won || r.cupRound === 'winner') {
         return {
+          image: 'Win_FACup.png',
           location: 'Wembley — FA Cup Winners',
           text: "The final whistle. The FA Cup is Valhalla's. The players don't move at first — it takes a moment to register what has just happened. Then Roberto is the first to react, arms wide, running toward you. Supporters pour past the stewards. The trophy glints somewhere in the chaos. Tonight, the whole city belongs to Valhalla.",
         };
@@ -662,6 +663,7 @@ window.Game.Engine = (function () {
       const won = (r.competitionWins || []).includes('Champions Cup');
       if (won || r.championsRound === 'winner') {
         return {
+          image: 'Win_ChampionsCup.png',
           location: 'Champions Cup — Winners',
           text: "The greatest night in this club's history. Confetti is still falling when Paulo Ferretti — who barely smiles — finds you on the pitch and says nothing, just shakes your hand for a very long time. The bus home takes four hours because the city won't let it through. Nobody on board minds at all.",
         };
@@ -684,6 +686,27 @@ window.Game.Engine = (function () {
       };
     }
 
+    if (comp === 'Club World Cup') {
+      const won = (r.competitionWins || []).includes('World Championship') || r.worldRound === 'winner';
+      if (won) {
+        return {
+          image: 'Win_WorldCup.png',
+          location: 'Club World Cup — Champions of the World',
+          text: "The last whistle echoes around the stadium and for a second nobody moves — players, staff, supporters frozen in the same disbelief. Then everything collapses at once. Players sprint from halfway. Kai Voss falls to his knees. Roberto finds you first, and whatever he says you can't hear it over the noise. You don't need to. You have just taken Valhalla to the top of the world.",
+        };
+      }
+      if (r.worldRound === 'out_Final' || scene.round === 'Final') {
+        return {
+          location: 'Club World Cup Final — Runners-Up',
+          text: "Beaten in the Club World Cup Final. The plane home is almost entirely silent. Silver medals sit in jacket pockets, untouched. You were ninety minutes from the summit of world football. That distance feels enormous tonight. In time, the squad will understand what reaching a World Cup Final actually means. That time is not now.",
+        };
+      }
+      return {
+        location: 'Club World Cup — Eliminated',
+        text: "The world stage found Valhalla out. There is no shame in that — most clubs never get here. On the long flight home you sit with the tactical notes and start again from the beginning. The lessons from this tournament will shape everything that follows.",
+      };
+    }
+
     return { location: 'Cup Exit', text: 'The cup run is over.' };
   }
 
@@ -694,6 +717,7 @@ window.Game.Engine = (function () {
 
     if (won || pos === 1) {
       return {
+        image: 'Win_League.png',
         location: 'Nordstrom Park — Champions',
         text: "The final whistle is still ringing when the pitch floods with supporters. A sea of blue and gold. The trophy is somewhere in the chaos — you can't see it yet, but you can hear it being sung about. The celebrations pour out of the stadium and into every bar and street in the city. By midnight the party shows no sign of stopping. This is what it feels like to win a league title.",
       };

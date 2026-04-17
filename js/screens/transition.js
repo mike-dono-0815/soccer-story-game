@@ -32,6 +32,18 @@ window.Game.Screens.Transition = (function () {
       card.appendChild(iconEl);
     }
 
+    // Win celebration image
+    if (transition.image) {
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'transition-win-img-wrap';
+      const img = document.createElement('img');
+      img.className = 'transition-win-img';
+      img.src = transition.image;
+      img.alt = '';
+      imgWrap.appendChild(img);
+      card.appendChild(imgWrap);
+    }
+
     // Location label
     if (transition.location) {
       const loc = document.createElement('div');
