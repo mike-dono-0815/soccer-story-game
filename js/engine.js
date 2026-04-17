@@ -128,85 +128,98 @@ window.Game.Engine = (function () {
     content.appendChild(subtitle);
 
     if (showSlots) {
-      // ── Saved games list ──────────────────────────────────────
-      const sectionLabel = document.createElement('div');
-      sectionLabel.className = 'menu-section-label';
-      sectionLabel.textContent = 'Saved Games';
-      content.appendChild(sectionLabel);
-
-      const slotList = document.createElement('div');
-      slotList.className = 'menu-slot-list';
-
-      slots.forEach(slot => {
-        const card = document.createElement('div');
-        card.className = 'menu-slot-card';
-
-        const info = document.createElement('div');
-        info.className = 'menu-slot-info';
-
-        const name = document.createElement('div');
-        name.className = 'menu-slot-name';
-        name.textContent = slot.managerName;
-
-        const date = document.createElement('div');
-        date.className = 'menu-slot-date';
-        date.textContent = _fmtSaveDate(slot.savedAt);
-
-        const progress = document.createElement('div');
-        progress.className = 'menu-slot-progress';
-        progress.textContent = _weekLabel(slot.week);
-
-        info.appendChild(name);
-        info.appendChild(date);
-        info.appendChild(progress);
-
-        const actions = document.createElement('div');
-        actions.className = 'menu-slot-actions';
-
-        const loadBtn = document.createElement('button');
-        loadBtn.className = 'menu-slot-load';
-        loadBtn.textContent = 'Load ›';
-        const doLoad = () => {
-          State.loadSlot(slot.id);
-          resumeGame();
-        };
-        loadBtn.addEventListener('click', doLoad);
-        loadBtn.addEventListener('touchend', e => { e.preventDefault(); doLoad(); }, { passive: false });
-
-        const delBtn = document.createElement('button');
-        delBtn.className = 'menu-slot-delete';
-        delBtn.textContent = '✕';
-        delBtn.title = 'Delete save';
-        const doDel = () => {
-          if (confirm(`Delete save for "${slot.managerName}"?`)) {
-            State.deleteSlot(slot.id);
-            renderMainMenu(State.listSlots().length === 0);
-          }
-        };
-        delBtn.addEventListener('click', doDel);
-        delBtn.addEventListener('touchend', e => { e.preventDefault(); doDel(); }, { passive: false });
-
-        actions.appendChild(loadBtn);
-        actions.appendChild(delBtn);
-
-        card.appendChild(info);
-        card.appendChild(actions);
-        slotList.appendChild(card);
-      });
-
-      content.appendChild(slotList);
-
-      // New game
+      // ── Two entry buttons ─────────────────────────────────────
       const buttons = document.createElement('div');
       buttons.className = 'menu-buttons';
+
+      const loadGameBtn = document.createElement('button');
+      loadGameBtn.className = 'btn-primary';
+      loadGameBtn.textContent = '📂  Load Game';
+
       const newGameBtn = document.createElement('button');
       newGameBtn.className = 'btn-secondary';
       newGameBtn.textContent = '+ New Game';
       const doNew = () => renderMainMenu(true);
       newGameBtn.addEventListener('click', doNew);
       newGameBtn.addEventListener('touchend', e => { e.preventDefault(); doNew(); }, { passive: false });
+
+      buttons.appendChild(loadGameBtn);
       buttons.appendChild(newGameBtn);
       content.appendChild(buttons);
+
+      // ── Slot list (hidden until Load is clicked) ──────────────
+      const slotList = document.createElement('div');
+      slotList.className = 'menu-slot-list menu-slot-list-hidden';
+
+      const renderSlots = () => {
+        slotList.innerHTML = '';
+        State.listSlots().forEach(slot => {
+          const card = document.createElement('div');
+          card.className = 'menu-slot-card';
+
+          const info = document.createElement('div');
+          info.className = 'menu-slot-info';
+
+          const name = document.createElement('div');
+          name.className = 'menu-slot-name';
+          name.textContent = slot.slotName || slot.managerName;
+
+          const date = document.createElement('div');
+          date.className = 'menu-slot-date';
+          date.textContent = _fmtSaveDate(slot.savedAt);
+
+          const progress = document.createElement('div');
+          progress.className = 'menu-slot-progress';
+          progress.textContent = _weekLabel(slot.week);
+
+          info.appendChild(name);
+          info.appendChild(date);
+          info.appendChild(progress);
+
+          const actions = document.createElement('div');
+          actions.className = 'menu-slot-actions';
+
+          const loadBtn = document.createElement('button');
+          loadBtn.className = 'menu-slot-load';
+          loadBtn.textContent = 'Load ›';
+          const doLoad = () => { State.loadSlot(slot.id); resumeGame(); };
+          loadBtn.addEventListener('click', doLoad);
+          loadBtn.addEventListener('touchend', e => { e.preventDefault(); doLoad(); }, { passive: false });
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'menu-slot-delete';
+          delBtn.textContent = '✕';
+          delBtn.title = 'Delete save';
+          const doDel = () => {
+            if (confirm(`Delete "${slot.slotName || slot.managerName}"?`)) {
+              State.deleteSlot(slot.id);
+              if (State.listSlots().length === 0) {
+                renderMainMenu(true);
+              } else {
+                renderSlots();
+              }
+            }
+          };
+          delBtn.addEventListener('click', doDel);
+          delBtn.addEventListener('touchend', e => { e.preventDefault(); doDel(); }, { passive: false });
+
+          actions.appendChild(loadBtn);
+          actions.appendChild(delBtn);
+          card.appendChild(info);
+          card.appendChild(actions);
+          slotList.appendChild(card);
+        });
+      };
+
+      renderSlots();
+      content.appendChild(slotList);
+
+      const doShowSlots = () => {
+        slotList.classList.remove('menu-slot-list-hidden');
+        loadGameBtn.style.display = 'none';
+      };
+      loadGameBtn.addEventListener('click', doShowSlots);
+      loadGameBtn.addEventListener('touchend', e => { e.preventDefault(); doShowSlots(); }, { passive: false });
 
     } else {
       // ── New game form ─────────────────────────────────────────
@@ -614,6 +627,101 @@ window.Game.Engine = (function () {
     });
   }
 
+  function _buildCupAftermathTransition(scene) {
+    const state = State.get();
+    const comp  = scene.competition;
+    const r     = state.results;
+
+    if (comp === 'FA Cup') {
+      const won = (r.competitionWins || []).includes('FA Cup');
+      if (won || r.cupRound === 'winner') {
+        return {
+          location: 'Wembley — FA Cup Winners',
+          text: "The final whistle. The FA Cup is Valhalla's. The players don't move at first — it takes a moment to register what has just happened. Then Roberto is the first to react, arms wide, running toward you. Supporters pour past the stewards. The trophy glints somewhere in the chaos. Tonight, the whole city belongs to Valhalla.",
+        };
+      }
+      if (r.cupRound === 'out_Final' || scene.round === 'Final') {
+        return {
+          location: 'Wembley — FA Cup Runners-Up',
+          text: "The final whistle is the loneliest sound you've heard all season. Silver medals are draped over necks but nobody wants to wear them. The dressing room is silent for a long time — someone leaves the shower running and nobody turns it off. Outside, the city goes about its evening. Somehow that makes it worse.",
+        };
+      }
+      if (scene.round === 'SF') {
+        return {
+          location: 'FA Cup — Semi-Final Exit',
+          text: "Close enough to Wembley to hurt. You sit with the tactics board for an hour after the bus empties, replaying the moment it slipped away. Lena knocks gently and leaves a coffee on the desk without a word. The league still has everything to play for. Tonight, that doesn't help.",
+        };
+      }
+      return {
+        location: 'FA Cup — Quarter-Final Exit',
+        text: "The quarter-final was one game too far. On the bus home a few of the players put headphones in and stare at the road. You make a note: same fixture, same pressure, different result. Next time Valhalla reaches the last eight, the squad will know what this moment feels like. That knowledge has a price.",
+      };
+    }
+
+    if (comp === 'Champions Cup') {
+      const won = (r.competitionWins || []).includes('Champions Cup');
+      if (won || r.championsRound === 'winner') {
+        return {
+          location: 'Champions Cup — Winners',
+          text: "The greatest night in this club's history. Confetti is still falling when Paulo Ferretti — who barely smiles — finds you on the pitch and says nothing, just shakes your hand for a very long time. The bus home takes four hours because the city won't let it through. Nobody on board minds at all.",
+        };
+      }
+      if (r.championsRound === 'out_Final' || scene.round === 'Final') {
+        return {
+          location: 'Champions Cup Final — Runners-Up',
+          text: "You took Valhalla to a European final. The continent watched. One match separated this club from the greatest prize in club football. In the hotel bar at two in the morning, a few of the staff sit together — not really talking, just present. That, at least, feels right.",
+        };
+      }
+      if (scene.round === 'KO') {
+        return {
+          location: 'Champions Cup — Semi-Final Exit',
+          text: "Eliminated in the last four. Sitting in the empty away dressing room after the final whistle, all you can think is — we were here. Valhalla was in a European semi-final. The squad is hurting now. In six months they'll understand what they just achieved. Right now, that's not much comfort.",
+        };
+      }
+      return {
+        location: 'Champions Cup — Group Stage Exit',
+        text: "Europe found Valhalla out. The gap between ambition and readiness was visible in each game. Lena quietly collects a full set of opposition reports on the flight home — you'll work through them all winter. The lessons are expensive. They will not be wasted.",
+      };
+    }
+
+    return { location: 'Cup Exit', text: 'The cup run is over.' };
+  }
+
+  function _buildLeagueAftermathTransition() {
+    const state = State.get();
+    const pos  = state.results.vplPosition || 9;
+    const won  = (state.results.competitionWins || []).includes('VPL');
+
+    if (won || pos === 1) {
+      return {
+        location: 'Nordstrom Park — Champions',
+        text: "The final whistle is still ringing when the pitch floods with supporters. A sea of blue and gold. The trophy is somewhere in the chaos — you can't see it yet, but you can hear it being sung about. The celebrations pour out of the stadium and into every bar and street in the city. By midnight the party shows no sign of stopping. This is what it feels like to win a league title.",
+      };
+    }
+    if (pos === 2) {
+      return {
+        location: 'Nordstrom Park — Runners-Up',
+        text: "Second place. The Champions Cup is secured for next season. In the dressing room there are mixed emotions — pride, relief, and a quiet ache for what might have been. You sit with the squad for a long time after the final whistle, nobody quite ready to leave. It is a good season. A very good season. But the players already know they'll be back next year with unfinished business.",
+      };
+    }
+    if (pos <= 4) {
+      return {
+        location: 'Nordstrom Park — European Football Secured',
+        text: "Top four. European nights secured for next season. The city doesn't throw a parade, but the fans who linger outside the ground are smiling — the kind of satisfied smiles that come from a season that delivered what it promised. In the players' bar afterwards, Roberto orders a round for everyone. Marco raises his glass. 'Next year,' he says. 'Next year we go all the way.'",
+      };
+    }
+    if (pos <= 8) {
+      return {
+        location: 'Nordstrom Park — Season\'s End',
+        text: "A mid-table finish. Not what anyone dreamed about in July, but the season is done and the squad is intact. In a quiet corner of a bar near the ground, a handful of players end up together — Sven, Kwame, Diego. They don't talk much about football. They order another round and stay until closing. Some seasons are just about making it through.",
+      };
+    }
+    return {
+      location: 'Nordstrom Park — Difficult Night',
+      text: "The final whistle brings more relief than joy. The dressing room empties quickly — some players disappear without a word. Later that evening you hear through Lena that a few of them ended up in a bar on the other side of town, drinking quietly until the small hours. Not a celebration. Just survivors processing a hard season together, the way footballers do.",
+    };
+  }
+
   function getEventLabel(event) {
     if (event.id === 'match_title_decider') {
       return _titleDeciderPrefix() + ' · ' + _fixtureLabel(event);
@@ -814,6 +922,16 @@ window.Game.Engine = (function () {
         Screens.KnockoutTransition.show(scene, () => {
           if (scene.next) advance(scene.next); else next();
         });
+        break;
+
+      case 'cup_aftermath':
+        Screens.Transition.show(_buildCupAftermathTransition(scene), () => {
+          if (scene.next) advance(scene.next); else next();
+        });
+        break;
+
+      case 'league_aftermath':
+        Screens.Transition.show(_buildLeagueAftermathTransition(), () => { next(); });
         break;
 
       case 'season_summary':

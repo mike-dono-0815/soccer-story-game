@@ -75,8 +75,17 @@ window.Game.Screens.CupRounds = (function () {
 
   // ── Match row builders ───────────────────────────────────────
 
-  function buildMatchRow(m, isCWC) {
-    const { getTeamName, getCWCTeam } = window.Game.CupSim;
+  function flagImg(isoCode) {
+    if (!isoCode) return null;
+    const img = document.createElement('img');
+    img.className = 'cr-flag-img';
+    img.src = `w320/${isoCode}.png`;
+    img.alt = isoCode;
+    return img;
+  }
+
+  function buildMatchRow(m, isCWC, isChamp) {
+    const { getTeamName, getCWCTeam, getChampTeam } = window.Game.CupSim;
     const row = document.createElement('div');
     row.className = 'cr-match-row';
 
@@ -97,6 +106,37 @@ window.Game.Screens.CupRounds = (function () {
       const aCell = document.createElement('div');
       aCell.className = 'cr-team-cell right' + (m.winnerId === m.awayId ? ' cr-winner' : ' cr-loser');
       aCell.innerHTML = `<span class="cr-name">${at.name}</span><span class="cr-flag">${at.flag || ''}</span>`;
+
+      row.appendChild(hCell);
+      row.appendChild(scoreEl);
+      row.appendChild(aCell);
+    } else if (isChamp) {
+      const ht = getChampTeam(m.homeId);
+      const at = getChampTeam(m.awayId);
+
+      const hCell = document.createElement('div');
+      hCell.className = 'cr-team-cell' + (m.winnerId === m.homeId ? ' cr-winner' : ' cr-loser');
+      const hFlag = flagImg(ht.flag);
+      if (hFlag) hCell.appendChild(hFlag);
+      const hName = document.createElement('span');
+      hName.className = 'cr-name';
+      hName.textContent = ht.name;
+      hCell.appendChild(hName);
+
+      const scoreEl = document.createElement('div');
+      scoreEl.className = 'cr-score';
+      scoreEl.textContent = (m.homeGoals != null && m.awayGoals != null)
+        ? `${m.homeGoals} – ${m.awayGoals}`
+        : '– –';
+
+      const aCell = document.createElement('div');
+      aCell.className = 'cr-team-cell right' + (m.winnerId === m.awayId ? ' cr-winner' : ' cr-loser');
+      const aName = document.createElement('span');
+      aName.className = 'cr-name';
+      aName.textContent = at.name;
+      aCell.appendChild(aName);
+      const aFlag = flagImg(at.flag);
+      if (aFlag) aCell.appendChild(aFlag);
 
       row.appendChild(hCell);
       row.appendChild(scoreEl);
@@ -129,7 +169,7 @@ window.Game.Screens.CupRounds = (function () {
 
   function buildGroupTable(fixtures, teamIds) {
     const standings = window.Game.CupSim.groupStandings(fixtures, teamIds);
-    const { getTeamName } = window.Game.CupSim;
+    const { getTeamName, getChampTeam } = window.Game.CupSim;
 
     const wrap = document.createElement('div');
     wrap.className = 'cr-group-table';
@@ -144,7 +184,12 @@ window.Game.Screens.CupRounds = (function () {
       r.className = 'cr-group-row' + (i < 2 ? ' cr-group-qualify' : '');
       const nameEl = document.createElement('span');
       nameEl.className = 'cr-g-name';
-      nameEl.textContent = (i < 2 ? '↑ ' : '') + getTeamName(row.id);
+      const team = getChampTeam(row.id);
+      const flagEl = flagImg(team.flag);
+      if (flagEl) nameEl.appendChild(flagEl);
+      const labelSpan = document.createElement('span');
+      labelSpan.textContent = (i < 2 ? '↑ ' : '') + getTeamName(row.id);
+      nameEl.appendChild(labelSpan);
       r.appendChild(nameEl);
       [row.played, row.w, row.d, row.l, row.pts].forEach((v, vi) => {
         const c = document.createElement('span');
@@ -206,7 +251,8 @@ window.Game.Screens.CupRounds = (function () {
       content.appendChild(buildGroupTable(data.groupBFixtures, data.groupBIds));
     } else {
       // Match results list
-      data.matches.forEach(m => content.appendChild(buildMatchRow(m, !!data.isCWC)));
+      const isChamp = data.competition === 'Champions Cup';
+      data.matches.forEach(m => content.appendChild(buildMatchRow(m, !!data.isCWC, isChamp)));
     }
 
     // Narrative

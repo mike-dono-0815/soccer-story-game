@@ -142,9 +142,17 @@ window.Game.State = (function () {
       midSeasonInvestment: null,  // 'attack' | 'defence' | 'youth'
     },
     midSeasonTransferPool: null,  // initialised on first visit to transfer_window_2
+    seasonCards: [
+      { id: 'high_press',    used: false },
+      { id: 'solid_block',   used: false },
+      { id: 'counter_punch', used: false },
+      { id: 'dead_ball',     used: false },
+      { id: 'gaffers_talk',  used: false },
+    ],
   };
 
   let _state = null;
+  let _currentSlotId = null;
 
   // ── Slot index helpers ──────────────────────────────────────────
   function _readIndex() {
@@ -161,6 +169,15 @@ window.Game.State = (function () {
     }
     if (!_state.cups) { _state.cups = window.Game.CupSim.simulateAll(); }
     if (!_state.playerStats) { _state.playerStats = {}; }
+    if (!_state.seasonCards) {
+      _state.seasonCards = [
+        { id: 'high_press',    used: false },
+        { id: 'solid_block',   used: false },
+        { id: 'counter_punch', used: false },
+        { id: 'dead_ball',     used: false },
+        { id: 'gaffers_talk',  used: false },
+      ];
+    }
   }
 
   function _freshState() {
@@ -182,6 +199,7 @@ window.Game.State = (function () {
       const parsed = JSON.parse(raw);
       if (parsed.meta && parsed.meta.version === SCHEMA_VERSION) {
         _state = parsed;
+        _currentSlotId = id;
         _backfill();
         return true;
       }
@@ -224,29 +242,59 @@ window.Game.State = (function () {
 
   function get() { return _state; }
 
+  function _pruneIfNeeded(index) {
+    if (index.length > MAX_SAVES) {
+      const oldest = index.slice().sort((a, b) => a.savedAt - b.savedAt)[0];
+      localStorage.removeItem(SAVE_PREFIX + oldest.id);
+      index.splice(index.findIndex(s => s.id === oldest.id), 1);
+    }
+  }
+
+  function _writeSlot(slot, index) {
+    slot.managerName = _state.meta.managerName;
+    slot.savedAt     = _state.meta.savedAt;
+    slot.week        = _state.progress.seasonWeek;
+    slot.eventIndex  = _state.progress.currentEventIndex;
+    _writeIndex(index);
+    try { localStorage.setItem(SAVE_PREFIX + slot.id, JSON.stringify(_state)); }
+    catch (e) { console.warn('Save failed:', e); }
+  }
+
+  // Auto-save: writes to the current active slot (set by loadSlot / saveAs).
+  // Falls back to a slot matched by managerName for backwards-compat.
   function save() {
     if (!_state) return;
     _state.meta.savedAt = Date.now();
     const index = _readIndex();
-    let slot = index.find(s => s.managerName === _state.meta.managerName);
+    let slot = _currentSlotId ? index.find(s => s.id === _currentSlotId) : null;
     if (!slot) {
-      slot = { id: String(_state.meta.savedAt) };
-      index.push(slot);
-      // Prune oldest if over limit
-      if (index.length > MAX_SAVES) {
-        const oldest = index.slice().sort((a, b) => a.savedAt - b.savedAt)[0];
-        localStorage.removeItem(SAVE_PREFIX + oldest.id);
-        index.splice(index.findIndex(s => s.id === oldest.id), 1);
-      }
+      slot = index.find(s => s.managerName === _state.meta.managerName);
     }
-    // Update metadata in index
-    slot.managerName  = _state.meta.managerName;
-    slot.savedAt      = _state.meta.savedAt;
-    slot.week         = _state.progress.seasonWeek;
-    slot.eventIndex   = _state.progress.currentEventIndex;
-    _writeIndex(index);
-    try { localStorage.setItem(SAVE_PREFIX + slot.id, JSON.stringify(_state)); }
-    catch (e) { console.warn('Save failed:', e); }
+    if (!slot) {
+      slot = { id: String(_state.meta.savedAt), slotName: _state.meta.managerName };
+      index.push(slot);
+      _pruneIfNeeded(index);
+      _currentSlotId = slot.id;
+    }
+    _writeSlot(slot, index);
+  }
+
+  // Named save: creates or overwrites a slot identified by the full label.
+  // label is the suffix the player typed; full slotName = "ManagerName_label".
+  function saveAs(label) {
+    if (!_state) return;
+    _state.meta.savedAt = Date.now();
+    const managerName = _state.meta.managerName;
+    const slotName = label ? `${managerName}_${label}` : managerName;
+    const index = _readIndex();
+    let slot = index.find(s => s.slotName === slotName);
+    if (!slot) {
+      slot = { id: String(_state.meta.savedAt), slotName };
+      index.push(slot);
+      _pruneIfNeeded(index);
+    }
+    _currentSlotId = slot.id;
+    _writeSlot(slot, index);
   }
 
   function reset() {
@@ -284,6 +332,14 @@ window.Game.State = (function () {
     if (effects.starSold === true) {
       s.starTravelling = false;
       s.starTravelGamesLeft = 0;
+    }
+    // Promoting Kai Voss: add him to the squad if not already there
+    if (effects.prodigyOnSquad === true) {
+      const alreadyOnSquad = _state.squad.some(p => p.id === 'prodigy');
+      if (!alreadyOnSquad) {
+        const kai = (_state.transferPool || []).find(p => p.id === 'prodigy');
+        if (kai) _state.squad.push({ ...kai, value: kai.price || 0 });
+      }
     }
   }
 
@@ -462,6 +518,13 @@ window.Game.State = (function () {
     }
   }
 
+  // Mark a tactical card as used for this season
+  function useCard(cardId) {
+    if (!_state.seasonCards) return;
+    const card = _state.seasonCards.find(c => c.id === cardId);
+    if (card) { card.used = true; save(); }
+  }
+
   // Mark competition as won
   function addCompetitionWin(name) {
     if (!_state.results.competitionWins.includes(name)) {
@@ -489,6 +552,6 @@ window.Game.State = (function () {
     return 'sacked'; // fallback if nothing else fits
   }
 
-  return { init, get, save, reset, listSlots, loadSlot, deleteSlot, applyEffects, applyRootEffects, recordResult, recordPlayerStats, addCompetitionWin, evaluateEnding };
+  return { init, get, save, saveAs, reset, listSlots, loadSlot, deleteSlot, applyEffects, applyRootEffects, recordResult, recordPlayerStats, addCompetitionWin, evaluateEnding, useCard };
 
 })();

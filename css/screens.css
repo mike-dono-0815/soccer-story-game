@@ -167,6 +167,7 @@
   gap: 10px;
   margin-bottom: 20px;
 }
+.menu-slot-list-hidden { display: none; }
 .menu-slot-card {
   display: flex;
   align-items: center;
@@ -333,6 +334,12 @@
   font-size: 11px;
   color: var(--text-dim);
 }
+.hub-load-slot-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
 .hub-load-slot-btn {
   padding: 8px 14px;
   background: var(--accent-gold);
@@ -344,6 +351,71 @@
   cursor: pointer;
   flex-shrink: 0;
   min-height: var(--tap-min);
+}
+.hub-load-slot-del {
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--text-dim);
+  flex-shrink: 0;
+  min-height: var(--tap-min);
+}
+
+/* Hub save modal */
+.hub-save-modal { max-height: none; }
+.hub-save-body {
+  padding: 20px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.hub-save-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.hub-save-name-row {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0 14px;
+  gap: 0;
+  height: 48px;
+}
+.hub-save-prefix {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-gold);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.hub-save-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 0;
+  min-width: 0;
+}
+.hub-save-input::placeholder { color: var(--text-dim); font-weight: 400; }
+.hub-save-hint {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: -4px;
+}
+.hub-save-confirm {
+  margin-top: 4px;
+  width: 100%;
 }
 
 /* --- STORY INTRO ----------------------------------------- */
@@ -1118,6 +1190,100 @@
   pointer-events: none;
   z-index: 5;
 }
+
+/* --- TACTICAL CARD TRAY ------------------------------------ */
+
+.tac-tray {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 0 6px;
+}
+.tac-tray-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+.tac-cards-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.tac-card {
+  width: 52px;
+  height: 74px;
+  perspective: 600px;
+  cursor: pointer;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.tac-card.used {
+  cursor: default;
+  pointer-events: none;
+}
+.tac-card-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.45s cubic-bezier(.4,0,.2,1);
+}
+.tac-card.used .tac-card-inner {
+  transform: rotateY(180deg);
+}
+.tac-card-front,
+.tac-card-back {
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px 2px;
+}
+.tac-card-front {
+  background: linear-gradient(160deg, #1e2a1e 0%, #0a140a 100%);
+  border: 1px solid rgba(100, 200, 70, 0.4);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.tac-card-front:hover,
+.tac-card:hover .tac-card-front {
+  border-color: rgba(100, 200, 70, 0.75);
+  box-shadow: 0 2px 12px rgba(100,200,70,0.2);
+}
+.tac-card-back {
+  background: linear-gradient(160deg, #1a1a2e 0%, #0f0f1a 100%);
+  border: 1px solid rgba(245, 200, 66, 0.18);
+  transform: rotateY(180deg);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.tac-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.tac-name {
+  font-size: 7.5px;
+  text-align: center;
+  color: var(--gold);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  line-height: 1.3;
+}
+.tac-back-mark {
+  font-size: 20px;
+  color: var(--gold);
+  opacity: 0.2;
+}
+
+/* --- END TACTICAL CARD TRAY -------------------------------- */
 
 .match-moments {
   flex: 1;
@@ -2948,9 +3114,16 @@
   text-align: center;
 }
 
+.transition-icon {
+  font-size: 56px;
+  line-height: 1;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 12px rgba(245, 200, 66, 0.45));
+}
+
 .transition-location {
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -3666,6 +3839,7 @@
 .cr-team-cell.cr-loser  .cr-name { color: var(--text-dim); }
 
 .cr-flag { font-size: 16px; flex-shrink: 0; }
+.cr-flag-img { width: 20px; height: 14px; object-fit: cover; border-radius: 2px; flex-shrink: 0; }
 
 .cr-name {
   font-size: 12px;
@@ -3715,7 +3889,7 @@
 .cr-group-row span { text-align: right; }
 
 .cr-group-hdr .cr-g-name,
-.cr-group-row .cr-g-name { text-align: left; }
+.cr-group-row .cr-g-name { text-align: left; display: flex; align-items: center; gap: 5px; }
 
 .cr-group-row { color: var(--text-secondary); }
 .cr-group-row .bold { color: var(--text-primary); font-weight: 700; }

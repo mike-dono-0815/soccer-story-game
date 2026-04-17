@@ -28,14 +28,14 @@ window.Game.CupSim = (function () {
   ];
 
   const CHAMP_TEAMS = [
-    { id: 'valhalla',        name: 'FC Valhalla',      str: 76, group: 'A' },
-    { id: 'bayern_klauss',   name: 'FC Bayern Klauss', str: 84, group: 'A' },
-    { id: 'sporting_lisora', name: 'Sporting Lisora',  str: 78, group: 'A' },
-    { id: 'fc_aurora',       name: 'FC Aurora',        str: 74, group: 'A' },
-    { id: 'real_estrada',    name: 'Real Estrada CF',  str: 83, group: 'B' },
-    { id: 'dynamo_vostok',   name: 'Dynamo Vostok',    str: 85, group: 'B' },
-    { id: 'atlas_fc',        name: 'Atlas FC',         str: 77, group: 'B' },
-    { id: 'porto_negro',     name: 'Porto Negro',      str: 80, group: 'B' },
+    { id: 'valhalla',        name: 'FC Valhalla',      str: 76, group: 'A', flag: null },
+    { id: 'bayern_klauss',   name: 'FC Bayern Klauss', str: 84, group: 'A', flag: 'de' },
+    { id: 'sporting_lisora', name: 'Sporting Lisora',  str: 78, group: 'A', flag: 'pt' },
+    { id: 'fc_aurora',       name: 'FC Aurora',        str: 74, group: 'A', flag: 'it' },
+    { id: 'real_estrada',    name: 'Real Estrada CF',  str: 83, group: 'B', flag: 'es' },
+    { id: 'dynamo_vostok',   name: 'Dynamo Vostok',    str: 85, group: 'B', flag: 'ru' },
+    { id: 'atlas_fc',        name: 'Atlas FC',         str: 77, group: 'B', flag: 'ma' },
+    { id: 'porto_negro',     name: 'Porto Negro',      str: 80, group: 'B', flag: 'br' },
   ];
 
   const CWC_TEAMS = [
@@ -61,6 +61,7 @@ window.Game.CupSim = (function () {
 
   function ft(id) { return FA_TEAMS.find(t => t.id === id); }
   function ct(id) { return CHAMP_TEAMS.find(t => t.id === id); }
+  function getChampTeam(id) { return CHAMP_TEAMS.find(t => t.id === id) || { id, name: id, flag: null }; }
 
   function simKO(a, b) {
     const p = Math.max(0.15, Math.min(0.85, 0.5 + (a.str - b.str) / 50));
@@ -505,6 +506,6 @@ window.Game.CupSim = (function () {
     }
   }
 
-  return { simulateAll, injectResult, revealChampRound, finalizeChampGroups, finalizeCWCRound, groupStandings, getTeamName, getCWCTeam, getPhaseLabel, getBetweenResults, FA_TEAMS, CHAMP_TEAMS, CWC_TEAMS };
+  return { simulateAll, injectResult, revealChampRound, finalizeChampGroups, finalizeCWCRound, groupStandings, getTeamName, getCWCTeam, getChampTeam, getPhaseLabel, getBetweenResults, FA_TEAMS, CHAMP_TEAMS, CWC_TEAMS };
 
 })();

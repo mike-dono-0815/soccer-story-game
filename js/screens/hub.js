@@ -116,7 +116,6 @@ window.Game.Screens.Hub = (function () {
     const standingRows = [
       ['League Position', (r.vplWins + r.vplDraws + r.vplLosses === 0) ? '—' : Utils.ordinal(livePosition) + ' of 18'],
       ['Budget', Utils.formatMoney(state.budget)],
-      ['Formation', state.formation],
     ];
 
     standingRows.forEach(([label, val]) => {
@@ -369,10 +368,7 @@ window.Game.Screens.Hub = (function () {
     saveBtn.className = 'hub-btn-icon';
     saveBtn.title = 'Save game';
     saveBtn.textContent = '💾';
-    const onSave = () => {
-      State.save();
-      showSaveToast(div);
-    };
+    const onSave = () => showSaveModal(div);
     saveBtn.addEventListener('click', onSave);
     saveBtn.addEventListener('touchend', e => { e.preventDefault(); onSave(); }, { passive: false });
     footer.appendChild(saveBtn);
@@ -389,6 +385,90 @@ window.Game.Screens.Hub = (function () {
     div.appendChild(footer);
 
     Utils.render(div);
+  }
+
+  function showSaveModal(container) {
+    const existing = container.querySelector('.hub-load-backdrop');
+    if (existing) existing.remove();
+
+    const { State } = window.Game;
+    const managerName = State.get().meta.managerName;
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'hub-load-backdrop';
+
+    const modal = document.createElement('div');
+    modal.className = 'hub-load-modal hub-save-modal';
+
+    const header = document.createElement('div');
+    header.className = 'hub-load-header';
+    const headerTitle = document.createElement('div');
+    headerTitle.className = 'hub-load-title';
+    headerTitle.textContent = 'Save Game';
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'hub-load-close';
+    closeBtn.textContent = '✕';
+    closeBtn.addEventListener('click', () => backdrop.remove());
+    closeBtn.addEventListener('touchend', e => { e.preventDefault(); backdrop.remove(); }, { passive: false });
+    header.appendChild(headerTitle);
+    header.appendChild(closeBtn);
+    modal.appendChild(header);
+
+    const body = document.createElement('div');
+    body.className = 'hub-save-body';
+
+    const label = document.createElement('div');
+    label.className = 'hub-save-label';
+    label.textContent = 'Save name';
+    body.appendChild(label);
+
+    const nameRow = document.createElement('div');
+    nameRow.className = 'hub-save-name-row';
+
+    const prefix = document.createElement('span');
+    prefix.className = 'hub-save-prefix';
+    prefix.textContent = managerName + '_';
+
+    const input = document.createElement('input');
+    input.className = 'hub-save-input';
+    input.type = 'text';
+    input.placeholder = 'e.g. AfterCup';
+    input.maxLength = 24;
+    // Sanitise as user types: only word chars, no spaces
+    input.addEventListener('input', () => {
+      input.value = input.value.replace(/[^a-zA-Z0-9_]/g, '');
+    });
+
+    nameRow.appendChild(prefix);
+    nameRow.appendChild(input);
+    body.appendChild(nameRow);
+
+    const hint = document.createElement('div');
+    hint.className = 'hub-save-hint';
+    hint.textContent = 'Leave blank to overwrite your last save.';
+    body.appendChild(hint);
+
+    const saveConfirmBtn = document.createElement('button');
+    saveConfirmBtn.className = 'btn-primary hub-save-confirm';
+    saveConfirmBtn.textContent = '💾  Save';
+    const doSave = () => {
+      const suffix = input.value.trim();
+      State.saveAs(suffix);
+      backdrop.remove();
+      showSaveToast(container);
+    };
+    saveConfirmBtn.addEventListener('click', doSave);
+    saveConfirmBtn.addEventListener('touchend', e => { e.preventDefault(); doSave(); }, { passive: false });
+    body.appendChild(saveConfirmBtn);
+
+    modal.appendChild(body);
+    backdrop.appendChild(modal);
+    container.appendChild(backdrop);
+
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove(); });
+    backdrop.addEventListener('touchend', e => { if (e.target === backdrop) { e.preventDefault(); backdrop.remove(); } }, { passive: false });
+
+    setTimeout(() => input.focus(), 50);
   }
 
   function showLoadModal(container) {
@@ -434,7 +514,7 @@ window.Game.Screens.Hub = (function () {
 
         const name = document.createElement('div');
         name.className = 'hub-load-slot-name';
-        name.textContent = slot.managerName;
+        name.textContent = slot.slotName || slot.managerName;
 
         const date = document.createElement('div');
         date.className = 'hub-load-slot-date';
@@ -448,15 +528,15 @@ window.Game.Screens.Hub = (function () {
         info.appendChild(date);
         info.appendChild(progress);
 
+        const actions = document.createElement('div');
+        actions.className = 'hub-load-slot-actions';
+
         const loadSlotBtn = document.createElement('button');
         loadSlotBtn.className = 'hub-load-slot-btn';
         loadSlotBtn.textContent = 'Load ›';
-        const isCurrent = slot.managerName === State.get().meta.managerName;
+        const displayName = slot.slotName || slot.managerName;
         const doLoad = () => {
-          const msg = isCurrent
-            ? 'Load this save? Any unsaved progress will be lost.'
-            : `Switch to "${slot.managerName}"? Any unsaved progress will be lost.`;
-          if (confirm(msg)) {
+          if (confirm(`Load "${displayName}"? Any unsaved progress will be lost.`)) {
             State.loadSlot(slot.id);
             backdrop.remove();
             Engine.showHub();
@@ -465,8 +545,29 @@ window.Game.Screens.Hub = (function () {
         loadSlotBtn.addEventListener('click', doLoad);
         loadSlotBtn.addEventListener('touchend', e => { e.preventDefault(); doLoad(); }, { passive: false });
 
+        const delBtn = document.createElement('button');
+        delBtn.className = 'hub-load-slot-del';
+        delBtn.textContent = '🗑';
+        delBtn.title = 'Delete save';
+        const doDel = () => {
+          if (confirm(`Delete "${displayName}"? This cannot be undone.`)) {
+            State.deleteSlot(slot.id);
+            card.remove();
+            if (modal.querySelectorAll('.hub-load-slot').length === 0) {
+              const empty = document.createElement('div');
+              empty.className = 'hub-load-empty';
+              empty.textContent = 'No saved games found.';
+              modal.appendChild(empty);
+            }
+          }
+        };
+        delBtn.addEventListener('click', doDel);
+        delBtn.addEventListener('touchend', e => { e.preventDefault(); doDel(); }, { passive: false });
+
+        actions.appendChild(loadSlotBtn);
+        actions.appendChild(delBtn);
         card.appendChild(info);
-        card.appendChild(loadSlotBtn);
+        card.appendChild(actions);
         modal.appendChild(card);
       });
     }

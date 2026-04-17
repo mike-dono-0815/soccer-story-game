@@ -24,6 +24,14 @@ window.Game.Screens.Transition = (function () {
     const card = document.createElement('div');
     card.className = 'transition-card';
 
+    // Trophy / icon
+    if (transition.icon) {
+      const iconEl = document.createElement('div');
+      iconEl.className = 'transition-icon';
+      iconEl.textContent = transition.icon;
+      card.appendChild(iconEl);
+    }
+
     // Location label
     if (transition.location) {
       const loc = document.createElement('div');

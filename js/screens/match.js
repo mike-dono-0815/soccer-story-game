@@ -7,18 +7,31 @@ window.Game.Screens = window.Game.Screens || {};
 
 window.Game.Screens.Match = (function () {
 
+  // ── Tactical Cards ─────────────────────────────────────────────
+  const TACTICAL_CARDS = [
+    { id: 'high_press',    icon: '🔥', name: 'High Press',    flavour: 'Push up. Force the error.' },
+    { id: 'solid_block',   icon: '🛡', name: 'Solid Block',   flavour: 'Drop deep. Stay compact.' },
+    { id: 'counter_punch', icon: '⚡', name: 'Counter',       flavour: 'Absorb. Hit the break.' },
+    { id: 'dead_ball',     icon: '🎯', name: 'Dead Ball',     flavour: 'One set piece. Everything.' },
+    { id: 'gaffers_talk',  icon: '📢', name: "Gaffer's Talk", flavour: 'Your words. Their fire.' },
+  ];
+
+  function pickGoalscorer(starters) {
+    const fwmf = starters.filter(p => p && ['ST', 'CF', 'CAM', 'RM', 'LM', 'CM', 'RW', 'LW'].includes(p.position));
+    const pool = fwmf.length > 0 ? fwmf : starters.filter(Boolean);
+    if (!pool.length) return { scorerShort: 'Valhalla', scorerId: null };
+    const p = pool[Math.floor(Math.random() * pool.length)];
+    return { scorerShort: p.name.split(' ').pop(), scorerId: p.id };
+  }
+
   function render(scene, onAdvance) {
     const { State, Utils, Engine } = window.Game;
     const state = State.get();
 
-    const result = calcOutcome(scene, state);
-    State.recordResult(scene.competition || 'VPL', result.outcome, scene.id, result.homeGoals, result.awayGoals, scene.opponent, scene.homeAway === 'home');
-    if (scene.isFinal && result.outcome === 'win') State.addCompetitionWin(scene.competition);
-    State.save();
-
-    const summary = window.Game.MatchSummary.generate(scene, result, state);
-    State.recordPlayerStats(summary.events, summary.potm, scene.competition || 'VPL', state.lineup);
-    State.save();
+    // Pre-calculate for sim animation goal events only — final result re-derived in finishSim
+    const initialResult = calcOutcome(scene, state);
+    const summary = window.Game.MatchSummary.generate(scene, initialResult, state);
+    const starters = state.lineup.map(id => state.squad.find(p => p.id === id)).filter(Boolean);
 
     const playerLookup = buildPlayerLookup(state);
 
@@ -80,27 +93,13 @@ window.Game.Screens.Match = (function () {
     resultLabel.style.display = 'none';
     content.appendChild(resultLabel);
 
-    // ── Scrollable summary area — hidden until simulation ends ───
+    // ── Scrollable summary area — built and revealed in finishSim ─
     const scrollArea = document.createElement('div');
     scrollArea.className = 'match-scroll-area';
     scrollArea.style.opacity = '0';
     scrollArea.style.pointerEvents = 'none';
 
-    const rptPane = buildReport(summary.proseParts, playerLookup);
-    rptPane.className = 'match-pane match-pane-report';
-    scrollArea.appendChild(rptPane);
-
-    const divider = document.createElement('div');
-    divider.className = 'match-section-divider';
-    divider.textContent = 'Match Events';
-    scrollArea.appendChild(divider);
-
-    const tlPane = buildTimeline(summary.events, playerLookup);
-    tlPane.className = 'match-pane match-pane-timeline';
-    scrollArea.appendChild(tlPane);
-
-    if (summary.potm) scrollArea.appendChild(buildPotm(summary.potm));
-
+    // Event delegation for player tags — works for children added later
     scrollArea.addEventListener('click', e => {
       const tag = e.target.closest('.player-tag');
       if (!tag) return;
@@ -124,16 +123,17 @@ window.Game.Screens.Match = (function () {
     const btn = document.createElement('button');
     btn.className = 'btn-primary';
     btn.textContent = 'Continue';
+    // advance/onDone use finalResult/finalSummary set in finishSim
     const advance = () => {
-      const nextId = (result.outcome === 'win' && scene.onWin)   ? scene.onWin
-                   : (result.outcome !== 'win' && scene.onLoss)  ? scene.onLoss
+      const nextId = (finalResult.outcome === 'win' && scene.onWin)  ? scene.onWin
+                   : (finalResult.outcome !== 'win' && scene.onLoss) ? scene.onLoss
                    : scene.next || null;
       if (typeof onAdvance === 'function') onAdvance(nextId);
       else if (nextId) Engine.advance(nextId);
       else Engine.next();
     };
     const onDone = () => {
-      const moments = summary.keyMoments || [];
+      const moments = (finalSummary && finalSummary.keyMoments) || [];
       if (moments.length === 0) { advance(); return; }
       let idx = 0;
       function showNext() {
@@ -161,8 +161,8 @@ window.Game.Screens.Match = (function () {
       .filter(e => e.type === 'goal')
       .sort((a, b) => a.minute - b.minute);
 
-    const maxMinute   = Math.max(90, goalEvents.length ? goalEvents[goalEvents.length - 1].minute : 0);
-    const DURATION_MS = 30000;
+    let maxMinute = Math.max(90, goalEvents.length ? goalEvents[goalEvents.length - 1].minute : 0);
+    const DURATION_MS = 21000;
 
     // Which column belongs to Valhalla vs opponent
     const vCol = isHome ? hCol : aCol;
@@ -173,6 +173,84 @@ window.Game.Screens.Match = (function () {
     let startTime   = null;
     let nextGoalIdx = 0;
     let curHome = 0, curAway = 0;
+    let simMinute   = 0;      // updated each tick, used by card injection
+    let finalResult = null;   // set in finishSim
+    let finalSummary = null;  // set in finishSim
+
+    // ── Tactical Card Tray ────────────────────────────────────────
+    const seasonCards = (state.seasonCards && state.seasonCards.length === TACTICAL_CARDS.length)
+      ? state.seasonCards
+      : TACTICAL_CARDS.map(c => ({ id: c.id, used: false }));
+
+    const tacTray = document.createElement('div');
+    tacTray.className = 'tac-tray';
+    const tacLabel = document.createElement('div');
+    tacLabel.className = 'tac-tray-label';
+    tacLabel.textContent = 'Tactical Cards';
+    tacTray.appendChild(tacLabel);
+    const tacRow = document.createElement('div');
+    tacRow.className = 'tac-cards-row';
+
+    TACTICAL_CARDS.forEach((def, idx) => {
+      const sc = seasonCards[idx];
+      const cardEl = document.createElement('div');
+      cardEl.className = 'tac-card' + (sc.used ? ' used' : '');
+      cardEl.title = def.flavour;
+      cardEl.innerHTML = `
+        <div class="tac-card-inner">
+          <div class="tac-card-front">
+            <span class="tac-icon">${def.icon}</span>
+            <span class="tac-name">${def.name}</span>
+          </div>
+          <div class="tac-card-back"><span class="tac-back-mark">✦</span></div>
+        </div>`;
+      tacRow.appendChild(cardEl);
+    });
+    tacTray.appendChild(tacRow);
+    // Insert before the result label inside content
+    content.insertBefore(tacTray, resultLabel);
+
+    // ── Card interaction ──────────────────────────────────────────
+    function applyCard(idx) {
+      const sc = seasonCards[idx];
+      if (!sc || sc.used || simDone) return;
+      sc.used = true;
+      State.useCard(sc.id);
+
+      // Remove the next future opponent goal (if any)
+      for (let i = nextGoalIdx; i < goalEvents.length; i++) {
+        if (!goalEvents[i].isValhalla) { goalEvents.splice(i, 1); break; }
+      }
+
+      // Inject a Valhalla goal in remaining time
+      const earliest = Math.max(simMinute + 6, 1);
+      if (earliest <= 88) {
+        const minute = Math.floor(Math.random() * (88 - earliest + 1)) + earliest;
+        const scorer = pickGoalscorer(starters);
+        const injected = { type: 'goal', minute, isValhalla: true, scorerId: scorer.scorerId, scorerShort: scorer.scorerShort };
+        let ins = goalEvents.length;
+        for (let i = nextGoalIdx; i < goalEvents.length; i++) {
+          if (goalEvents[i].minute > minute) { ins = i; break; }
+        }
+        goalEvents.splice(ins, 0, injected);
+      }
+
+      // Flip card visually
+      const cardEl = tacRow.children[idx];
+      if (cardEl) cardEl.classList.add('used');
+
+      // Update label if all used
+      const allUsed = seasonCards.every(c => c.used);
+      if (allUsed) tacLabel.textContent = 'No cards remaining';
+    }
+
+    tacRow.querySelectorAll('.tac-card').forEach((cardEl, idx) => {
+      cardEl.addEventListener('click', e => { e.stopPropagation(); applyCard(idx); });
+      cardEl.addEventListener('touchend', e => { e.preventDefault(); e.stopPropagation(); applyCard(idx); }, { passive: false });
+    });
+    // Prevent tray-level taps from triggering "tap to skip"
+    tacTray.addEventListener('click', e => e.stopPropagation());
+    tacTray.addEventListener('touchend', e => e.stopPropagation(), { passive: false });
 
     function flashNum(el) {
       el.classList.remove('sb-num-flash');
@@ -204,32 +282,69 @@ window.Game.Screens.Match = (function () {
       // Fire any goals not yet shown
       while (nextGoalIdx < goalEvents.length) fireGoal(goalEvents[nextGoalIdx++], false);
 
-      // Correct to final score (handles AET extra goal, penalties staying at 90-min)
-      homeNumEl.textContent = result.homeGoals;
-      awayNumEl.textContent = result.awayGoals;
+      // ── Derive actual result from displayed goals ─────────────
+      const valGoals = goalEvents.filter(g => g.isValhalla).length;
+      const oppGoals = goalEvents.filter(g => !g.isValhalla).length;
+      const fHomeGoals = isHome ? valGoals : oppGoals;
+      const fAwayGoals = isHome ? oppGoals : valGoals;
+      const rawOutcome = valGoals > oppGoals ? 'win' : valGoals < oppGoals ? 'loss' : 'draw';
+      const rawResult  = { outcome: rawOutcome, homeGoals: fHomeGoals, awayGoals: fAwayGoals };
+      finalResult = (rawOutcome === 'draw' && isKnockoutMatch(scene))
+        ? resolveKODraw(rawResult, scene)
+        : { ...rawResult, method: 'normal', penScore: null, ninetyGoals: null };
 
-      // Add AET / penalties badge to scorebox now that we know the final method
-      if (result.method === 'aet' || (result.method === 'penalties' && result.penScore)) {
+      // Correct displayed score to final (AET adds a goal, penalties keep 90-min score)
+      homeNumEl.textContent = finalResult.homeGoals;
+      awayNumEl.textContent = finalResult.awayGoals;
+
+      // AET / penalties badge
+      if (finalResult.method === 'aet' || (finalResult.method === 'penalties' && finalResult.penScore)) {
         const scoreBox = sbEl.querySelector('.match-sb-score');
         if (scoreBox && !scoreBox.querySelector('.sb-method-badge')) {
           const badge = document.createElement('div');
           badge.className = 'sb-method-badge';
-          badge.textContent = result.method === 'aet'
+          badge.textContent = finalResult.method === 'aet'
             ? 'AET'
-            : `${result.penScore.home}–${result.penScore.away} pens`;
+            : `${finalResult.penScore.home}–${finalResult.penScore.away} pens`;
           scoreBox.appendChild(badge);
         }
       }
 
-      // Hide clock bar and skip hint
-      liveBar.style.display = 'none';
+      // Record result and generate summary
+      State.recordResult(scene.competition || 'VPL', finalResult.outcome, scene.id, finalResult.homeGoals, finalResult.awayGoals, scene.opponent, isHome);
+      if (scene.isFinal && finalResult.outcome === 'win') State.addCompetitionWin(scene.competition);
+      State.save();
+      finalSummary = window.Game.MatchSummary.generate(scene, finalResult, state);
+      State.recordPlayerStats(finalSummary.events, finalSummary.potm, scene.competition || 'VPL', state.lineup);
+      State.save();
+
+      // Hide live elements + card tray
+      liveBar.style.display  = 'none';
       skipHint.style.display = 'none';
+      tacTray.style.display  = 'none';
 
       // Reveal result label
+      resultLabel.className   = `match-result-label ${finalResult.outcome}`;
+      resultLabel.textContent = finalResult.outcome === 'win' ? '⚡ VICTORY'
+                              : finalResult.outcome === 'draw' ? '⚖ DRAW'
+                              : '💔 DEFEAT';
       resultLabel.style.display = '';
       setTimeout(() => {
-        resultLabel.classList.add(result.outcome === 'win' ? 'pulse-good' : result.outcome === 'loss' ? 'shake' : '');
+        resultLabel.classList.add(finalResult.outcome === 'win' ? 'pulse-good' : finalResult.outcome === 'loss' ? 'shake' : '');
       }, 100);
+
+      // Build scroll area content
+      const rptPane = buildReport(finalSummary.proseParts, playerLookup);
+      rptPane.className = 'match-pane match-pane-report';
+      scrollArea.appendChild(rptPane);
+      const divider = document.createElement('div');
+      divider.className = 'match-section-divider';
+      divider.textContent = 'Match Events';
+      scrollArea.appendChild(divider);
+      const tlPane = buildTimeline(finalSummary.events, playerLookup);
+      tlPane.className = 'match-pane match-pane-timeline';
+      scrollArea.appendChild(tlPane);
+      if (finalSummary.potm) scrollArea.appendChild(buildPotm(finalSummary.potm));
 
       // Fade in scroll area
       scrollArea.style.transition = 'opacity 0.5s ease';
@@ -245,12 +360,12 @@ window.Game.Screens.Match = (function () {
       if (!startTime) startTime = timestamp;
       const elapsed  = Math.min(timestamp - startTime, DURATION_MS);
       const progress = elapsed / DURATION_MS;
-      const gameMins = Math.floor(progress * maxMinute);
+      simMinute = Math.floor(progress * maxMinute);
 
-      clockEl.textContent      = gameMins > 90 ? `90+${gameMins - 90}'` : `${gameMins}'`;
+      clockEl.textContent      = simMinute > 90 ? `90+${simMinute - 90}'` : `${simMinute}'`;
       progressFill.style.width = `${progress * 100}%`;
 
-      while (nextGoalIdx < goalEvents.length && goalEvents[nextGoalIdx].minute <= gameMins) {
+      while (nextGoalIdx < goalEvents.length && goalEvents[nextGoalIdx].minute <= simMinute) {
         fireGoal(goalEvents[nextGoalIdx++], true);
       }
 

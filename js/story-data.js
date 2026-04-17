@@ -546,6 +546,11 @@ window.Game.StoryData = (function () {
       homeAway: 'home',
       difficulty: 0.30,
       week: 4,
+      transition: {
+        icon: '🏆',
+        location: 'The FA Cup',
+        text: "A cup with a hundred years of legendary stories. Giant-killings, last-minute winners, tears in the tunnel. The least likely clubs have lifted it. The most powerful clubs have crumbled in it. Everything is possible.",
+      },
       calendarLabel: 'FA Cup Round 1',
       next: 'injury_event',
       onLoss: 'fa_cup_out_r1',
@@ -576,10 +581,9 @@ window.Game.StoryData = (function () {
         },
         {
           label: 'Call up youth — Kai Voss steps in.',
-          hint: 'If Voss is on the squad, this is his chance. Invests in the future.',
-          effects: { starInjured: true, youthInvestment: +15, teamMorale: +2, fanReputation: +8 },
+          hint: 'Kai gets his chance. Invests in the future.',
+          effects: { starInjured: true, prodigyOnSquad: true, youthInvestment: +15, teamMorale: +2, fanReputation: +8 },
           next: 'injury_youth_scene',
-          condition: { flag: 'prodigyOnSquad', truthy: true, thenScene: 'injury_youth_scene', elseScene: 'injury_rest_scene' },
         },
       ],
     },
@@ -593,7 +597,7 @@ window.Game.StoryData = (function () {
         '"But I\'ll be back sharper. Watch."',
         'Three weeks will pass. When he is returning, there will be a new hunger in his eyes.',
       ],
-      next: 'board_pressure_1',
+      next: 'rivals_intro',
     },
 
     injury_rush_scene: {
@@ -605,7 +609,7 @@ window.Game.StoryData = (function () {
         'But by week four, the physio pulls you aside. "The injury\'s worse."',
         'Marco misses six weeks. He doesn\'t look at you for a while after that.',
       ],
-      next: 'board_pressure_1',
+      next: 'rivals_intro',
     },
 
     injury_youth_scene: {
@@ -615,10 +619,10 @@ window.Game.StoryData = (function () {
       dialogue: [
         'Kai Voss gets the call-up. Seventeen years old. He looks terrified and thrilled in equal measure.',
         '"Don\'t think. Just play," you tell him before his first game.',
-        'He doesn\'t score. But he runs like the wind and the crowd sings his name by the end.',
+        'He is more than excited and will give a 120% all the time.',
         'Lena is beaming. "Gaffer — that kid is something special."',
       ],
-      next: 'board_pressure_1',
+      next: 'rivals_intro',
     },
 
     board_pressure_1: {
@@ -636,20 +640,20 @@ window.Game.StoryData = (function () {
           label: '"We\'re building momentum. Trust the process."',
           hint: 'Buys goodwill but Paulo loses patience faster later.',
           effects: { boardConfidence: -5, teamMorale: +5 },
-          next: 'match_league_3',
+          next: 'transfer_deadline',
         },
         {
           label: '"Injuries have hurt us. We\'re adapting."',
           hint: 'Factual. Paulo accepts it — barely.',
           effects: { boardConfidence: +3, mediaRep: +3 },
-          next: 'match_league_3',
+          next: 'transfer_deadline',
         },
         {
           label: '"Give me the transfer budget and we\'ll fix it now."',
           hint: 'Paulo likes decisiveness. He adds £2M to the budget.',
           effects: { boardConfidence: +8, teamMorale: -3 },
           rootEffects: { budget: +2 },
-          next: 'match_league_3',
+          next: 'transfer_deadline',
         },
       ],
     },
@@ -658,10 +662,6 @@ window.Game.StoryData = (function () {
       id: 'match_league_3', type: 'match', phase: 'league',
       competition: 'VPL',
       opponent: 'Ironclad United',
-      transition: {
-        location: 'Nordstrom Park — VPL Matchday',
-        text: "Ironclad United. The fixture that's been circled on every calendar in the city since the draw was made. Paulo has texted you twice already this morning. The squad is silent on the coach.",
-      },
       homeAway: 'home',
       difficulty: 0.60,
       week: 6,
@@ -683,19 +683,19 @@ window.Game.StoryData = (function () {
           label: 'Fine him two weeks\' wages.',
           hint: 'Sets a standard. The squad notices.',
           effects: { teamMorale: -3, boardConfidence: +5, mediaRep: +5, fanReputation: +5 },
-          next: 'rivals_intro',
+          next: 'champions_group_1',
         },
         {
           label: 'Suspend him for one game.',
           hint: 'Public and decisive. Paulo is pleased.',
           effects: { teamMorale: -6, boardConfidence: +8, fanReputation: +8 },
-          next: 'rivals_intro',
+          next: 'champions_group_1',
         },
         {
           label: 'Handle it privately.',
           hint: 'Protects the player. Builds loyalty in the dressing room.',
           effects: { teamMorale: +5, mediaRep: -5, starHappiness: +5, fanReputation: -3 },
-          next: 'rivals_intro',
+          next: 'champions_group_1',
         },
       ],
     },
@@ -704,6 +704,10 @@ window.Game.StoryData = (function () {
       id: 'rivals_intro', type: 'story', phase: 'league',
       background: 'bg-press-room',
       character: 'rival', name: 'Ivan Sorokin',
+      transition: {
+        location: 'Nordstrom Park — The Derby',
+        text: "Ironclad United. Not just a match — the match. Our fiercest local rival, the club this city measured everything against long before you arrived. League positions don't matter today. History does. The next ninety minutes are worth ten times any other game this season — and every single person in that dressing room knows it.",
+      },
       dialogue: [
         'The pre-match press conference. Ivan Sorokin, manager of Ironclad United, takes the mic next.',
         '"Valhalla are a nice little club. Cute project. But this league is built for serious teams."',
@@ -724,19 +728,19 @@ window.Game.StoryData = (function () {
           label: '"We let our football do the talking."',
           hint: 'Dignified. Gets massive media play. Sorokin is furious.',
           effects: { mediaRep: +12, rivalityEscalated: false, teamMorale: +8, fanReputation: +8 },
-          next: 'champions_group_1',
+          next: 'match_league_3',
         },
         {
           label: '"See you on the pitch, Ivan."',
           hint: 'Short. Sharp. The squad loves it. Sorokin escalates the war.',
           effects: { mediaRep: +8, rivalityEscalated: true, teamMorale: +12, boardConfidence: -3, fanReputation: +12 },
-          next: 'champions_group_1',
+          next: 'match_league_3',
         },
         {
           label: '"Honestly? He\'s not wrong yet. But he will be."',
           hint: 'Disarming and humble. Unexpected. The press eats it up.',
           effects: { mediaRep: +15, teamMorale: +5, fanReputation: +10 },
-          next: 'champions_group_1',
+          next: 'match_league_3',
         },
       ],
     },
@@ -1012,7 +1016,7 @@ window.Game.StoryData = (function () {
       difficulty: 0.65,
       week: 13,
       calendarLabel: 'Derby — vs. Ironclad (A)',
-      next: 'transfer_deadline',
+      next: 'board_pressure_1',
     },
 
     transfer_deadline: {
@@ -1419,6 +1423,12 @@ window.Game.StoryData = (function () {
     // SEASON END — EVAL + ENDINGS
     // ----------------------------------------------------------------
 
+    league_aftermath: {
+      id: 'league_aftermath', type: 'league_aftermath',
+      calendarLabel: 'Season Aftermath',
+      week: 34,
+    },
+
     season_summary: {
       id: 'season_summary', type: 'season_summary',
       calendarLabel: 'Season Review',
@@ -1525,7 +1535,13 @@ window.Game.StoryData = (function () {
         "So close to the semi-final — and now it's over.",
         "The focus shifts. The league and Europe remain. This isn't the end.",
       ],
-      next: null, // Engine.next() → callup_decision in spine
+      next: 'fa_cup_qf_aftermath',
+    },
+
+    fa_cup_qf_aftermath: {
+      id: 'fa_cup_qf_aftermath', type: 'cup_aftermath',
+      competition: 'FA Cup', round: 'QF',
+      next: null, // → next() resumes spine after fa_cup_qf
     },
 
     fa_cup_out_sf: {
@@ -1536,7 +1552,13 @@ window.Game.StoryData = (function () {
         "Wembley was within sight. Now it's gone.",
         "Lena says nothing on the coach home. There's nothing to say.",
       ],
-      next: null, // Engine.next() → champions_ko_check in spine
+      next: 'fa_cup_sf_aftermath',
+    },
+
+    fa_cup_sf_aftermath: {
+      id: 'fa_cup_sf_aftermath', type: 'cup_aftermath',
+      competition: 'FA Cup', round: 'SF',
+      next: null, // → next() resumes spine after fa_cup_sf
     },
 
     fa_cup_out_final: {
@@ -1547,7 +1569,13 @@ window.Game.StoryData = (function () {
         "You stood on the biggest domestic stage and fell short. It will define your thinking for years.",
         "The trophy stays with Ironclad. The dressing room is devastated.",
       ],
-      next: null, // Engine.next() → champions_final_check in spine
+      next: null, // → next() hits fa_cup_final_aftermath in spine
+    },
+
+    fa_cup_final_aftermath: {
+      id: 'fa_cup_final_aftermath', type: 'cup_aftermath',
+      competition: 'FA Cup', round: 'Final',
+      next: null, // → next() → champions_final_check
     },
 
     champ_out_group: {
@@ -1558,6 +1586,12 @@ window.Game.StoryData = (function () {
         "Europe's elite were unforgiving. The lessons are painful but real.",
         "The continental chapter is closed — but the season still has so much to play for.",
       ],
+      next: 'champ_group_aftermath',
+    },
+
+    champ_group_aftermath: {
+      id: 'champ_group_aftermath', type: 'cup_aftermath',
+      competition: 'Champions Cup', round: 'Group',
       next: 'player_conflict',
     },
 
@@ -1569,6 +1603,12 @@ window.Game.StoryData = (function () {
         "A European campaign to be proud of — and a reminder of how much further there is to go.",
         "The dressing room will take time to recover. The season run-in demands more.",
       ],
+      next: 'champ_ko_aftermath',
+    },
+
+    champ_ko_aftermath: {
+      id: 'champ_ko_aftermath', type: 'cup_aftermath',
+      competition: 'Champions Cup', round: 'KO',
       next: 'locker_room_talk',
     },
 
@@ -1580,7 +1620,13 @@ window.Game.StoryData = (function () {
         "You took this club to a European final. Nobody saw it coming.",
         "The trophy is theirs. The legacy is yours.",
       ],
-      next: null, // Engine.next() → cwc_qualify_check in spine
+      next: null, // → next() hits champions_final_aftermath in spine
+    },
+
+    champions_final_aftermath: {
+      id: 'champions_final_aftermath', type: 'cup_aftermath',
+      competition: 'Champions Cup', round: 'Final',
+      next: null, // → next() → cwc_qualify_check
     },
 
     cwc_out_r16: {
@@ -1750,15 +1796,18 @@ window.Game.StoryData = (function () {
     scenes.second_half_review,
     scenes.paulo_final_meeting,
     scenes.match_title_decider,
-    scenes.fa_cup_final_check,    // gate: qualified for FA Cup Final?
-    scenes.fa_cup_final,          // onLoss → fa_cup_out_final (off-spine)
-    scenes.champions_final_check, // gate: qualified for Champions Final?
-    scenes.champions_final,       // onLoss → champ_out_final (off-spine)
+    scenes.fa_cup_final_check,       // gate: qualified for FA Cup Final?
+    scenes.fa_cup_final,             // onLoss → fa_cup_out_final (→ next() hits aftermath)
+    scenes.fa_cup_final_aftermath,   // win OR loss both call next() from fa_cup_final position
+    scenes.champions_final_check,    // gate: qualified for Champions Final?
+    scenes.champions_final,          // onLoss → champ_out_final (→ next() hits aftermath)
+    scenes.champions_final_aftermath, // win OR loss both call next() from champions_final position
     scenes.cwc_qualify_check,     // gate: league winner → CWC
     scenes.cwc_r16,               // onLoss → cwc_out_r16 (off-spine)
     scenes.cwc_qf,                // onLoss → cwc_out_qf (off-spine)
     scenes.cwc_sf,                // onLoss → cwc_out_sf (off-spine)
     scenes.cwc_final,             // onLoss → cwc_out_final (off-spine)
+    scenes.league_aftermath,      // dynamic transition: league season reaction
     scenes.season_summary,
     scenes.season_end_eval,
   ];
