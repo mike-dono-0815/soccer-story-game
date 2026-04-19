@@ -62,9 +62,21 @@ window.Game.Engine = (function () {
     skip.addEventListener('touchend', e => { e.preventDefault(); finish(); }, { passive: false });
 
     video.play().catch(() => {
-      // Autoplay blocked — show a tap-to-play prompt instead
-      video.muted = true;
-      video.play().catch(() => finish());
+      // Autoplay blocked (mobile requires user gesture for audio) — show tap prompt
+      const tap = document.createElement('div');
+      tap.className = 'intro-tap-prompt';
+      tap.textContent = 'Tap to Play';
+      overlay.appendChild(tap);
+
+      function startOnGesture() {
+        overlay.removeEventListener('click', startOnGesture);
+        overlay.removeEventListener('touchend', startOnGesture);
+        tap.remove();
+        video.muted = false;
+        video.play().catch(() => finish());
+      }
+      overlay.addEventListener('click', startOnGesture);
+      overlay.addEventListener('touchend', startOnGesture);
     });
   }
 
