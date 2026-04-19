@@ -132,18 +132,7 @@ window.Game.Utils = (function () {
 
   window.Game.Settings.load();
 
-  // Setup triple-tap debug
-  let tapCount = 0;
-  let tapTimer = null;
-  document.addEventListener('click', function () {
-    tapCount++;
-    clearTimeout(tapTimer);
-    tapTimer = setTimeout(() => { tapCount = 0; }, 600);
-    if (tapCount >= 5) {
-      tapCount = 0;
-      showDebug();
-    }
-  });
+  // Debug trigger disabled
 
   // Create element helper
   function el(tag, className, content) {
